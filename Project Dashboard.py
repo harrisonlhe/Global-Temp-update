@@ -1,100 +1,134 @@
 # ───────────────────────────────────────────────────────────
 #  🌍  GLOBAL TEMPERATURE STORY DASHBOARD  (Streamlit + Altair)
 # ───────────────────────────────────────────────────────────
-import streamlit as st
 import pandas as pd
 import altair as alt
+import streamlit as st
 
-# ─── Page set‑up ────────────────────────────────────────────
-st.set_page_config(page_title="Global Temperature Dashboard",
-                   page_icon="🌍",
-                   layout="wide")
+# ─── Page Setup ─────────────────────────────────────────────────────
+st.set_page_config(page_title="Temperature Dashboard", page_icon="🌍", layout="wide")
+st.title("🌍 Temperature Change Visualizations 🌡️")
 
-st.title(":earth_africa: Global Temperature Story  :thermometer:")
-
-st.image(
-    "https://upload.wikimedia.org/wikipedia/commons/3/33/Global_temperature_anomalies_-_1880-present.gif",
-    caption="Global Temperature Anomalies Since 1880 (Credit: NASA)",
-    use_column_width=True
-)
-
+# ─── Scatter Plot: Temperature Change Over Time ─────────────────────
+st.subheader("Scatter Plot: Temperature Change Over Time")
 st.write("""
-### About This Dashboard
-This dashboard explores key global temperature trends, anomalies, and projections to provide insights into climate change.
+This scatter plot visualizes **temperature changes by year** for selected countries. 
+Points are color-coded by the degree of temperature change (blue represents cooling, red represents warming), 
+and opacity represents the highlighted selection.
 
-**How Gases Affect Temperature**
-Greenhouse gases like CO2, CH4, and water vapor trap heat in the atmosphere. Human activity has intensified this effect, leading to global warming. Use the interactive tools to explore how these changes vary by country, year, and development status.
+**Interactive Features**:
+- Hover over points to see specific country, year, and temperature changes.
+- Click a country (if filtered) to isolate its specific annual trends.
 """)
 
-# ─── Cached Data Load ───────────────────────────────────────
-@st.cache_data
-def load_csv(file):
-    return pd.read_csv(file)
+# Sample Data Filtering
+if chart_country == "All":
+    sample_countries = filtered_chart["Country"].unique()[:10]
+    scatter_src = filtered_chart[filtered_chart["Country"].isin(sample_countries)]
+else:
+    scatter_src = filtered_chart
 
-df = load_csv("Indicator_3_1_Climate_Indicators_Annual_Mean_Global_Surface_Temperature_577579683071085080.csv")
-df2 = load_csv("global-warming-by-gas-and-source.csv")
-df_monthly = load_csv("df_monthly_long.csv")
-df_contribution = load_csv("contributions-global-temp-change.csv")
+# Scatter Chart Creation
+sel_country = alt.selection_point(fields=["Country"], bind="legend")
 
-# ─── Reshape and Prepare Data ───────────────────────────────
-year_cols = [c for c in df.columns if c.isdigit()]
-df_long = df.melt(
-    id_vars=["Country", "ISO2", "ISO3", "Indicator", "Unit"],
-    value_vars=year_cols,
-    var_name="Year",
-    value_name="TempChange"
-)
-df_long["Year"] = df_long["Year"].astype(int)
-
-# Map development status
-developed_iso3 = ["USA", "CAN", "GBR", "DEU", "FRA", "JPN",
-                  "AUS", "NZL", "NOR", "SWE", "CHE"]
-df_long["DevStatus"] = df_long["ISO3"].apply(
-    lambda x: "Developed" if x in developed_iso3 else "Developing"
-)
-
-# Monthly formatting
-df_monthly['Date'] = pd.to_datetime(df_monthly[['Year', 'Month']].assign(DAY=1))
-df_monthly.rename(columns={'Mean_Temp':'Monthly Average Temperature Change (\u00b0C)'}, inplace=True)
-
-# ─── Filters and Sidebar ────────────────────────────────────
-data_long_list = list(df_long["Country"].unique())
-data_contribution_list = list(df_contribution['Entity'].unique())
-df_monthly_list = list(df_monthly["Entity"].unique())
-df2_list = list(df2['Entity'].unique())
-
-in_all = [x for x in data_long_list if x in data_contribution_list and x in df_monthly_list and x in df2_list]
-
-all_countries = ["All"] + sorted(in_all)
-year_min, year_max = int(df_long["Year"].min()), int(df_long["Year"].max())
-
-with st.sidebar.expander("📊 Charts Filters", expanded=True):
-    chart_country = st.selectbox("Country", all_countries, key="chart_country")
-
-with st.sidebar.expander("🌐 Select Time Period", expanded=False):
-    dev_year_range = st.slider("Year Range",
-                               min_value=year_min,
-                               max_value=year_max,
-                               value=(year_min, year_max),
-                               step=1,
-                               key="dev_year_range")
-
-# ─── Tabs ───────────────────────────────────────────────────
-tabs = st.tabs(["\ud83d\udcca Charts", "\ud83c\udf10 Developed vs Developing", "\ud83d\udccb Data"])
-
-# Placeholders for future code...
-with tabs[0]:
-    st.subheader("Coming soon: Country Trends and Global Gas Contributions")
-
-with tabs[1]:
-    st.subheader("Coming soon: Developed vs Developing Comparisons")
-
-with tabs[2]:
-    st.subheader("Raw Data Preview")
-    st.dataframe(df_long.head(100))
-    st.download_button(
-        "Download Filtered Data",
-        data=df_long.to_csv(index=False).encode('utf-8'),
-        file_name="filtered_temperature_data.csv",
-        mime="text/csv"
+scatter = (
+    alt.Chart(scatter_src)
+    .mark_circle(size=60)
+    .encode(
+        x=alt.X("Year:O", axis=alt.Axis(labelAngle=0), title="Year"),
+        y=alt.Y("TempChange:Q", title="Temperature Change (°C)"),
+        color=alt.Color(
+            "TempChange:Q",
+            scale=alt.Scale(scheme="redblue", reverse=True, domainMid=0),
+            legend=alt.Legend(title="Temp Change (°C)"),
+        ),
+        opacity=alt.condition(sel_country, alt.value(1), alt.value(0.15)),
+        tooltip=["Country", "Year", "TempChange"]
     )
+    .add_params(sel_country)
+    .properties(
+        width=750,
+        height=400,
+        title=f"Temperature Change Over Time – {chart_country if chart_country != 'All' else 'All Countries'}",
+    )
+)
+
+# Render scatter plot
+st.altair_chart(scatter, use_container_width=True)
+
+# ─── Monthly Temperature Change Line Chart ──────────────────────────
+st.subheader("Monthly Temperature Trends")
+st.write("""
+This line chart captures **monthly average temperature changes** over time.
+The color gradient represents the **Yearly Average Temperature Change**, making it easier to identify warming or cooling trends.
+
+**Interactive Features**:
+- Hover over a specific month to view precise temperature change values.
+- Click on a year in the legend to filter monthly trends for that year only.
+""")
+
+# Monthly Data Filtering
+if chart_country == "All":
+    df_monthly_filtered = filtered_chart_monthly[filtered_chart_monthly["Entity"] == "World"]
+    name = "All"
+else:
+    df_monthly_filtered = filtered_chart_monthly[filtered_chart_monthly["Entity"] == chart_country]
+    name = chart_country
+
+# Calculate Yearly Averages
+yearly_averages = (
+    df_monthly_filtered.groupby(["Year", "Entity"])["Monthly Average Temperature Change (°C)"]
+    .agg("mean")
+    .reset_index()
+    .rename(columns={"Monthly Average Temperature Change (°C)": "Yearly Average Temperature Change (°C)"})
+)
+
+# Merge Monthly Data with Yearly Averages
+df_monthly_filtered = pd.merge(df_monthly_filtered, yearly_averages, on=["Year", "Entity"], how="left")
+
+# Selection for Line Chart
+sel_year = alt.selection_point(fields=["Year"], empty=True)
+
+# Line Chart Creation
+monthly_line = (
+    alt.Chart(df_monthly_filtered)
+    .mark_line()
+    .encode(
+        x=alt.X(
+            "Month_named:N",
+            sort=[
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December"
+            ],
+            title="Month"
+        ),
+        y=alt.Y("Monthly Average Temperature Change (°C):Q", title="Monthly Avg Temp Change (°C)"),
+        color=alt.Color(
+            "Yearly Average Temperature Change (°C):Q",
+            scale=alt.Scale(scheme="reds"),
+            legend=alt.Legend(title="Yearly Avg Temp Change (°C)")
+        ),
+        opacity=alt.condition(sel_year, alt.value(1), alt.value(0.20)),
+        tooltip=["Year", "Monthly Average Temperature Change (°C)", "Entity"]
+    )
+    .properties(
+        width=750,
+        height=400,
+        title=f"Monthly Average Temperature Change – {name}",
+    )
+    .interactive()
+    .add_params(sel_year)
+)
+
+# Render monthly line chart
+st.altair_chart(monthly_line, use_container_width=True)
