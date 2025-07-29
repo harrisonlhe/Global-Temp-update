@@ -1,23 +1,21 @@
 # ───────────────────────────────────────────────────────────
 #  🌍  GLOBAL TEMPERATURE STORY DASHBOARD  (Streamlit + Altair)
 # ───────────────────────────────────────────────────────────
+import streamlit as st
 import pandas as pd
 import altair as alt
-import streamlit as st
 
 # ─── Page set‑up ────────────────────────────────────────────
-
 st.set_page_config(page_title="Global Temperature Dashboard",
                    page_icon="🌍",
                    layout="wide")
 
 st.title("🌍 Global Temperature Story  🌡️")
 
-# Adding an Image and Text
 st.image(
     "https://upload.wikimedia.org/wikipedia/commons/3/33/Global_temperature_anomalies_-_1880-present.gif",
     caption="Global Temperature Anomalies Since 1880 (Credit: NASA)",
-    use_column_width=True
+    use_container_width=True
 )
 
 st.write("""
@@ -30,135 +28,74 @@ Greenhouse gases, like carbon dioxide (CO2), methane (CH4), and water vapor, tra
 Explore the visualizations to understand the impacts of these changes and potential mitigation strategies.
 """)
 
-# ─── Scatter Plot: Temperature Change Over Time ─────────────────────
-st.subheader("Scatter Plot: Temperature Change Over Time")
-st.write("""
-This scatter plot visualizes **temperature changes by year** for selected countries. 
-Points are color-coded by the degree of temperature change (blue represents cooling, red represents warming), 
-and opacity represents the highlighted selection.
+# ─── Cached Data Load ───────────────────────────────────────
+@st.cache_data
+def load_csv(file):
+    return pd.read_csv(file)
 
-**Interactive Features**:
-- Hover over points to see specific country, year, and temperature changes.
-- Click a country (if filtered) to isolate its specific annual trends.
-""")
+df = load_csv("Indicator_3_1_Climate_Indicators_Annual_Mean_Global_Surface_Temperature_577579683071085080.csv")
+df2 = load_csv("global-warming-by-gas-and-source.csv")
+df_monthly = load_csv("df_monthly_long.csv")
+df_contribution = load_csv("contributions-global-temp-change.csv")
 
-# Sample Data Filtering
-if chart_country == "All":
-    sample_countries = filtered_chart["Country"].unique()[:10]
-    scatter_src = filtered_chart[filtered_chart["Country"].isin(sample_countries)]
-else:
-    scatter_src = filtered_chart
+# ─── Reshape and Prepare Data ───────────────────────────────
+year_cols = [c for c in df.columns if c.isdigit()]
+df_long = df.melt(
+    id_vars=["Country", "ISO2", "ISO3", "Indicator", "Unit"],
+    value_vars=year_cols,
+    var_name="Year",
+    value_name="TempChange"
+)
+df_long["Year"] = df_long["Year"].astype(int)
 
-# Scatter Chart Creation
-sel_country = alt.selection_point(fields=["Country"], bind="legend")
-
-scatter = (
-    alt.Chart(scatter_src)
-    .mark_circle(size=60)
-    .encode(
-        x=alt.X("Year:O", axis=alt.Axis(labelAngle=0), title="Year"),
-        y=alt.Y("TempChange:Q", title="Temperature Change (°C)"),
-        color=alt.Color(
-            "TempChange:Q",
-            scale=alt.Scale(scheme="redblue", reverse=True, domainMid=0),
-            legend=alt.Legend(title="Temp Change (°C)"),
-        ),
-        opacity=alt.condition(sel_country, alt.value(1), alt.value(0.15)),
-        tooltip=["Country", "Year", "TempChange"]
-    )
-    .add_params(sel_country)
-    .properties(
-        width=750,
-        height=400,
-        title=f"Temperature Change Over Time – {chart_country if chart_country != 'All' else 'All Countries'}",
-    )
+# Map development status
+developed_iso3 = ["USA", "CAN", "GBR", "DEU", "FRA", "JPN",
+                  "AUS", "NZL", "NOR", "SWE", "CHE"]
+df_long["DevStatus"] = df_long["ISO3"].apply(
+    lambda x: "Developed" if x in developed_iso3 else "Developing"
 )
 
-# Render scatter plot
-st.altair_chart(scatter, use_container_width=True)
+# Monthly formatting
+df_monthly['Date'] = pd.to_datetime(df_monthly[['Year', 'Month']].assign(DAY=1))
+df_monthly.rename(columns={'Mean_Temp':'Monthly Average Temperature Change (°C)'}, inplace=True)
 
-# ─── Monthly Temperature Change Line Chart ──────────────────────────
-st.subheader("Monthly Temperature Trends")
-st.write("""
-This line chart captures **monthly average temperature changes** over time.
-The color gradient represents the **Yearly Average Temperature Change**, making it easier to identify warming or cooling trends.
+# ─── Filters and Sidebar ────────────────────────────────────
+data_long_list = list(df_long["Country"].unique())
+data_contribution_list = list(df_contribution['Entity'].unique())
+df_monthly_list = list(df_monthly["Entity"].unique())
+df2_list = list(df2['Entity'].unique())
 
-**Interactive Features**:
-- Hover over a specific month to view precise temperature change values.
-- Click on a year in the legend to filter monthly trends for that year only.
-""")
+in_all = [x for x in data_long_list if x in data_contribution_list and x in df_monthly_list and x in df2_list]
 
-# Monthly Data Filtering
-if chart_country == "All":
-    df_monthly_filtered = filtered_chart_monthly[filtered_chart_monthly["Entity"] == "World"]
-    name = "All"
-else:
-    df_monthly_filtered = filtered_chart_monthly[filtered_chart_monthly["Entity"] == chart_country]
-    name = chart_country
+all_countries = ["All"] + sorted(in_all)
+year_min, year_max = int(df_long["Year"].min()), int(df_long["Year"].max())
 
-# Calculate Yearly Averages
-yearly_averages = (
-    df_monthly_filtered.groupby(["Year", "Entity"])["Monthly Average Temperature Change (°C)"]
-    .agg("mean")
-    .reset_index()
-    .rename(columns={"Monthly Average Temperature Change (°C)": "Yearly Average Temperature Change (°C)"})
-)
+with st.sidebar.expander("📊 Charts Filters", expanded=True):
+    chart_country = st.selectbox("Country", all_countries, key="chart_country")
 
-# Merge Monthly Data with Yearly Averages
-df_monthly_filtered = pd.merge(df_monthly_filtered, yearly_averages, on=["Year", "Entity"], how="left")
+with st.sidebar.expander("🌐 Select Time Period", expanded=False):
+    dev_year_range = st.slider("Year Range",
+                               min_value=year_min,
+                               max_value=year_max,
+                               value=(year_min, year_max),
+                               step=1,
+                               key="dev_year_range")
 
-# Selection for Line Chart
-sel_year = alt.selection_point(fields=["Year"], empty=True)
+# ─── Tabs ───────────────────────────────────────────────────
+tabs = st.tabs(["📊 Charts", "🌐 Developed vs Developing", "📋 Data"])
 
-# Line Chart Creation
-monthly_line = (
-    alt.Chart(df_monthly_filtered)
-    .mark_line()
-    .encode(
-        x=alt.X(
-            "Month_named:N",
-            sort=[
-                "January",
-                "February",
-                "March",
-                "April",
-                "May",
-                "June",
-                "July",
-                "August",
-                "September",
-                "October",
-                "November",
-                "December"
-            ],
-            title="Month"
-        ),
-        y=alt.Y("Monthly Average Temperature Change (°C):Q", title="Monthly Avg Temp Change (°C)"),
-        color=alt.Color(
-            "Yearly Average Temperature Change (°C):Q",
-            scale=alt.Scale(scheme="reds"),
-            legend=alt.Legend(title="Yearly Avg Temp Change (°C)")
-        ),
-        opacity=alt.condition(sel_year, alt.value(1), alt.value(0.20)),
-        tooltip=["Year", "Monthly Average Temperature Change (°C)", "Entity"]
+with tabs[0]:
+    st.subheader("Coming soon: Country Trends and Global Gas Contributions")
+
+with tabs[1]:
+    st.subheader("Coming soon: Developed vs Developing Comparisons")
+
+with tabs[2]:
+    st.subheader("Raw Data Preview")
+    st.dataframe(df_long.head(100))
+    st.download_button(
+        "Download Filtered Data",
+        data=df_long.to_csv(index=False).encode('utf-8'),
+        file_name="filtered_temperature_data.csv",
+        mime="text/csv"
     )
-    .properties(
-        width=750,
-        height=400,
-        title=f"Monthly Average Temperature Change – {name}",
-    )
-    .interactive()
-    .add_params(sel_year)
-)
-
-# Render monthly line chart
-st.altair_chart(monthly_line, use_container_width=True)
-
-# ─── Tabs layout ───────────────────────────────────────────
-tab_charts, tab_dev, tab_data = st.tabs(
-    ["📊 Charts", "🌐 Developed vs Developing", "📋 Data"]
-)
-
-# ─── Altair settings ───────────────────────────────────────
-alt.data_transformers.disable_max_rows()
-sel_country = alt.selection_point(fields=["Country"], empty="all")
