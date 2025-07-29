@@ -5,9 +5,30 @@ import pandas as pd
 import altair as alt
 import streamlit as st
 
-# ─── Page Setup ─────────────────────────────────────────────────────
-st.set_page_config(page_title="Temperature Dashboard", page_icon="🌍", layout="wide")
-st.title("🌍 Temperature Change Visualizations 🌡️")
+# ─── Page set‑up ────────────────────────────────────────────
+
+st.set_page_config(page_title="Global Temperature Dashboard",
+                   page_icon="🌍",
+                   layout="wide")
+
+st.title("🌍 Global Temperature Story  🌡️")
+
+# Adding an Image and Text
+st.image(
+    "https://upload.wikimedia.org/wikipedia/commons/3/33/Global_temperature_anomalies_-_1880-present.gif",
+    caption="Global Temperature Anomalies Since 1880 (Credit: NASA)",
+    use_column_width=True
+)
+
+st.write("""
+### About This Dashboard
+Over the past century, the Earth's surface temperature has experienced significant changes due to various natural and anthropogenic factors. This dashboard explores key global temperature trends, anomalies, and projections to provide insights into the ongoing climate challenges.
+
+**How Gases Affect Temperature**
+Greenhouse gases, like carbon dioxide (CO2), methane (CH4), and water vapor, trap heat in the Earth's atmosphere. This natural process, called the greenhouse effect, maintains the Earth's habitable temperature. However, excessive emissions from human activities, including burning fossil fuels and deforestation, amplify this effect, leading to global warming and climate changes.
+
+Explore the visualizations to understand the impacts of these changes and potential mitigation strategies.
+""")
 
 # ─── Scatter Plot: Temperature Change Over Time ─────────────────────
 st.subheader("Scatter Plot: Temperature Change Over Time")
@@ -132,3 +153,12 @@ monthly_line = (
 
 # Render monthly line chart
 st.altair_chart(monthly_line, use_container_width=True)
+
+# ─── Tabs layout ───────────────────────────────────────────
+tab_charts, tab_dev, tab_data = st.tabs(
+    ["📊 Charts", "🌐 Developed vs Developing", "📋 Data"]
+)
+
+# ─── Altair settings ───────────────────────────────────────
+alt.data_transformers.disable_max_rows()
+sel_country = alt.selection_point(fields=["Country"], empty="all")
