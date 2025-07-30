@@ -1,4 +1,4 @@
-# 🌍 GLOBAL TEMPERATURE STORY DASHBOARD — NASA Style + YoY + Overview
+# 🌍 GLOBAL TEMPERATURE STORY DASHBOARD 
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -29,7 +29,7 @@ st.markdown(
         }
     </style>
     <div class="hero" role="region" aria-label="Header with Earth image and dashboard title">
-        <h1>🌍 Temperature Dashboard 🌡️</h1>
+        <h1>🌍 Global Temperature Change 🌡️</h1>
         <p>An interactive exploration of monthly and yearly global temperature trends.</p>
     </div>
     """,
