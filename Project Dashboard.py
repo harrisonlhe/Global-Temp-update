@@ -13,10 +13,19 @@ st.set_page_config(page_title="Global Temperature Dashboard",
 st.title("🌍 Global Temperature Story  🌡️")
 
 # Display the local image from GitHub
+st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
 st.image(
     "https://raw.githubusercontent.com/PReece11/Global-Temp/main/pexels-arthousestudio-4310289.jpg",
     caption="Image from Pexels (Credit: Arthousestudio)",
-    width=600  
+    width=600
+)
+st.markdown("</div>", unsafe_allow_html=True)
+
+# Display the global temperature animation
+st.image(
+    "https://upload.wikimedia.org/wikipedia/commons/3/33/Global_temperature_anomalies_-_1880-present.gif",
+    caption="Global Temperature Anomalies Since 1880 (Credit: NASA)",
+    use_container_width=True
 )
 
 st.write("""
