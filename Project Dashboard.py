@@ -48,12 +48,22 @@ st.write(
 
 st.markdown("---")
 
-# ─── Sidebar Navigation ───────────────────────
+# ─── Sidebar Navigation ─────────────────
 st.sidebar.title("Navigation")
 st.sidebar.caption("🔑 Use keyboard ↑↓ or type to search options.")
+st.sidebar.markdown("""
+**Navigation Tips:**
+- Use the **dropdown menu** to choose a section.
+- You can **type to filter** or use your **arrow keys** to move.
+- Choose **Explore Trends** to interact with charts over time.
+- Switch to **Warming Gases** to analyze gas-specific impacts.
+- Use **Dev Status Comparison** to compare developed vs. developing countries.
+- Try **Chat Assistant** to ask questions about the data.
+""")
+
 page = st.sidebar.radio(
     "Go to:",
-    ["Home", "Explore Trends", "Warming Gases", "Chat Assistant"],
+    ["Explore Trends", "Warming Gases", "Chat Assistant", "Dev Status Comparison"],
     index=0
 )
 
@@ -136,9 +146,13 @@ if page == "Home":
 
     Explore the visualizations to understand the impacts of these changes and potential mitigation strategies.
     """)
+    
 # ─── Explore Trends Page Tabs ─────────────────────────────
 if page == "Explore Trends":
     tab1, tab2, tab3, tab4 = st.tabs(["📈 Year-over-Year", "🌡️ Scatter Plot", "🔻 Variability", "🌍 Economic Status"])
+
+    selected_country = st.sidebar.selectbox("Select Country:", ["All"] + sorted(df_long["Country"].unique()))
+    filtered = df_long[df_long["Country"] == selected_country] if selected_country != "All" else df_long
 
     # Year-over-Year Trend
     with tab1:
@@ -216,13 +230,10 @@ if page == "Explore Trends":
     # Developed vs Developing
     with tab4:
         st.subheader("🌍 Developed vs Developing: Temperature Comparison")
-        filtered_dev = df_long.copy()
-        dev_status = pd.read_csv("country_dev_status.csv")  # Must have columns Country, DevStatus
-        filtered_dev = filtered_dev.merge(dev_status, on="Country", how="left")
-        dev_year_range = [filtered_dev["Year"].min(), filtered_dev["Year"].max()]
+        dev_year_range = [df_long["Year"].min(), df_long["Year"].max()]
         dev_sel = alt.selection_multi(fields=["DevStatus"], bind="legend")
 
-        dev_avg = filtered_dev.groupby(["Year", "DevStatus"])["TempChange"].mean().reset_index()
+        dev_avg = df_long.groupby(["Year", "DevStatus"])["TempChange"].mean().reset_index()
         line_chart = alt.Chart(dev_avg).mark_line(point=True).encode(
             x=alt.X("Year:O"),
             y=alt.Y("TempChange:Q", title="Avg Temp Change (°C)"),
@@ -236,8 +247,8 @@ if page == "Explore Trends":
         )
         st.altair_chart(line_chart, use_container_width=True)
 
-        filtered_dev["YearGroup"] = (filtered_dev["Year"] // 5) * 5
-        dev_bar = filtered_dev.groupby(["YearGroup", "DevStatus"])["TempChange"].mean().reset_index()
+        df_long["YearGroup"] = (df_long["Year"] // 5) * 5
+        dev_bar = df_long.groupby(["YearGroup", "DevStatus"])["TempChange"].mean().reset_index()
         bar_chart = alt.Chart(dev_bar).mark_bar().encode(
             x=alt.X("YearGroup:O", title="5-Year Group"),
             y=alt.Y("TempChange:Q", title="Avg Temp Change (°C)"),
@@ -260,7 +271,6 @@ if page == "Explore Trends":
 
         The distinction isn't always clear-cut, as some nations exhibit characteristics of both.
         """)
-
 # ─── Warming Gases Page ─────────────────────────────────────
 if page == "Warming Gases":
     st.subheader("🔥 Warming Contributions by Gas and Source")
@@ -311,7 +321,7 @@ if page == "Chat Assistant":
     # Set up chat interface
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = [
-            {"role": "assistant", "content": "Hi, I'm ClimateBot! Ask me anything about global temperatures 🌍"}
+            {"role": "assistant", "content": "Hi, I'm ClimateBot! Ask me about global temperatures 🌍"}
         ]
 
     for msg in st.session_state.chat_history:
