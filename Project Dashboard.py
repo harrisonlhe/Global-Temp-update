@@ -105,19 +105,6 @@ def load_gas_data():
 
     return gas_long
 
-gas_long = load_gas_data()
-
-# Load gas warming data
-@st.cache_data
-def load_gas_data():
-    df2 = pd.read_csv("global-warming-by-gas-and-source.csv")
-    df2 = df2.rename(columns={"Entity": "series", "Annual global temperature change from GHG": "Temp Change"})
-    df2 = df2[["Year", "series", "Temp Change"]].dropna()
-    df2 = df2[df2["Temp Change"] != 0]  # Filter out zero values if needed
-    return df2
-
-gas_long = load_gas_data()
-
 # ─── Sidebar Filters ───────────────
 if page not in ["Home", "Chat Assistant"]:
     st.sidebar.header("🔍 Filters")
