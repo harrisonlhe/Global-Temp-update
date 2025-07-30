@@ -119,6 +119,21 @@ def load_gas_data():
 
     return gas_long
 
+# ─── Sidebar Filters ───────────────
+if page not in ["Home", "Chat Assistant"]:
+    st.sidebar.header("🔍 Filters")
+    countries = ["All"] + sorted(df_long["Country"].unique())
+    years     = ["All"] + sorted(df_long["Year"].unique())
+
+    selected_country = st.sidebar.selectbox("Country", countries)
+    selected_year    = st.sidebar.selectbox("Year", years)
+
+    filtered = df_long.copy()
+    if selected_country != "All":
+        filtered = filtered[filtered["Country"] == selected_country]
+    if selected_year != "All":
+        filtered = filtered[filtered["Year"] == selected_year]
+
 # ─── Home Page ───────────────────────────── 
 if page == "Home":
     st.write("""
@@ -131,13 +146,9 @@ if page == "Home":
     Explore the visualizations to understand the impacts of these changes and potential mitigation strategies.
     """)
     
+# ─── Explore Trends Page Tabs ─────────────────────────────
 if page == "Explore Trends":
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📈 Year-over-Year",
-        "🌡️ Scatter Plot",
-        "🔻 Variability",
-        "🌍 Economic Status"
-    ])
+    tab1, tab2, tab3, tab4 = st.tabs(["📈 Year-over-Year", "🌡️ Scatter Plot", "🔻 Variability", "🌍 Economic Status"])
 
     # 📈 Year-over-Year Trend
     with tab1:
