@@ -253,8 +253,8 @@ st.markdown("---")
 st.write(
     """
     <div style="text-align: center;" role="contentinfo" aria-label="Footer">
-        Brought to you by <strong>NASA-inspired Data Exploration Team</strong>. 
-        <a href="https://www.nasa.gov/" target="_blank">Visit NASA</a> for official climate data.
+        Brought to you by <strong>Harrison, Paula and Roydan</strong>. 
+        Advocates for official climate change.
     </div>
     """,
     unsafe_allow_html=True
