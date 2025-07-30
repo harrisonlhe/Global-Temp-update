@@ -48,22 +48,22 @@ st.write(
 
 st.markdown("---")
 
-# ─── Sidebar Navigation ─────────────────
+# ─── Sidebar Navigation ────────────────────────────
 st.sidebar.title("Navigation")
-st.sidebar.caption("🔑 Use keyboard ↑↓ or type to search options.")
-st.sidebar.markdown("""
-**Navigation Tips:**
-- Use the **dropdown menu** to choose a section.
-- You can **type to filter** or use your **arrow keys** to move.
-- Choose **Explore Trends** to interact with charts over time.
-- Switch to **Warming Gases** to analyze gas-specific impacts.
-- Try **Chat Assistant** to ask questions about the data.
-""")
+st.sidebar.caption("""
+🔑 Use keyboard ↑↓ or type to search options. 
+Use this menu to switch between sections of the dashboard:
+- **Home**: Overview of global temperature trends
+- **Explore Trends**: Yearly patterns, variability, and status comparisons
+- **Warming Gases**: Contributions by greenhouse gases and sources
+- **Chat Assistant**: Ask questions like \"Which country warmed fastest in 1998?\"
 
+🌓 **Note**: This dashboard is best viewed in **dark mode** for optimal readability and contrast.
+""")
 page = st.sidebar.radio(
     "Go to:",
     ["Home", "Explore Trends", "Warming Gases", "Chat Assistant"],
-    index=1
+    index=0
 )
 
 # ─── Data Load and Prep ─────────────────
@@ -146,7 +146,7 @@ if page == "Home":
     Explore the visualizations to understand the impacts of these changes and potential mitigation strategies.
     """)
     
-# ─── Explore Trends Page Tabs ─────────────────────────────
+# ─── Explore Trends Page Tabs ─────────────────────
 if page == "Explore Trends":
     tab1, tab2, tab3, tab4 = st.tabs(["📈 Year-over-Year", "🌡️ Scatter Plot", "🔻 Variability", "🌍 Economic Status"])
 
@@ -203,11 +203,13 @@ if page == "Explore Trends":
     # Variability Analysis
     with tab3:
         st.subheader("🔻 Countries with Decreasing Temperature Variability")
-        st.info("""
-        This chart compares the **standard deviation of temperature change** before and after 1993.
-        A **negative delta** indicates more stable climate conditions. Lower variability can reflect reduced
-        extremes or smoothing of seasonal temperature fluctuations.
-        """)
+        st.info(
+            """
+            This chart compares the **standard deviation of temperature change** before and after 1993.
+            A **negative delta** indicates more stable climate conditions. Lower variability can reflect reduced
+            extremes or smoothing of seasonal temperature fluctuations.
+            """
+        )
         early = df_long[df_long["Year"] <= 1992].groupby("Country")["TempChange"].std().reset_index(name="Std_Early")
         late = df_long[df_long["Year"] >= 1993].groupby("Country")["TempChange"].std().reset_index(name="Std_Late")
         std_comp = early.merge(late, on="Country")
@@ -215,7 +217,7 @@ if page == "Explore Trends":
         decreasing = std_comp[std_comp["Delta_Std"] < 0].sort_values("Delta_Std")
 
         bar = alt.Chart(decreasing).mark_bar().encode(
-            x=alt.X("Delta_Std:Q", title="Δ Std Dev (1993–2024 − 1961–1992)"),
+            x=alt.X("Delta_Std:Q", title="∆ Std Dev (1993–2024 − 1961–1992)"),
             y=alt.Y("Country:N", sort="-x"),
             color=alt.Color("Delta_Std:Q", scale=alt.Scale(scheme="viridis", domainMid=0)),
             tooltip=["Country", "Std_Early", "Std_Late", "Delta_Std"]
@@ -261,16 +263,18 @@ if page == "Explore Trends":
         )
         st.altair_chart(bar_chart, use_container_width=True)
 
-        st.write("""
-        Developed countries, often referred to as "high-income" nations, typically have advanced technological infrastructure,
-        high standards of living, and robust economies. Examples include the United States, Germany, and Japan.
+        st.write(
+            """
+            Developed countries, often referred to as "high-income" nations, typically have advanced technological infrastructure,
+            high standards of living, and robust economies. Examples include the United States, Germany, and Japan.
 
-        In contrast, developing countries, or "low to middle-income" nations, often face challenges like lower economic growth,
-        limited access to education and healthcare, and higher poverty rates. Examples include India, Nigeria, and Bangladesh.
+            In contrast, developing countries, or "low to middle-income" nations, often face challenges like lower economic growth,
+            limited access to education and healthcare, and higher poverty rates. Examples include India, Nigeria, and Bangladesh.
 
-        The distinction isn't always clear-cut, as some nations exhibit characteristics of both.
-        """)
-        
+            The distinction isn't always clear-cut, as some nations exhibit characteristics of both.
+            """
+        )
+       
 # ─── Warming Gases Page ─────────────────────────────────────
 if page == "Warming Gases":
     st.subheader("🔥 Warming Contributions by Gas and Source")
