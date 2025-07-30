@@ -120,14 +120,17 @@ def load_gas_data():
     return gas_long
 
 # ─── Sidebar Filters ────────────────────
-if page in ["Explore Trends", "Warming Gases"]:
+if page not in ["Home", "Chat Assistant"]:
     st.sidebar.header("🔍 Filters")
+    
     countries = ["All"] + sorted(df_long["Country"].unique())
     years     = ["All"] + sorted(df_long["Year"].unique())
 
-    selected_country = st.sidebar.selectbox("Select Country:", countries, key="selected_country")
-    selected_year    = st.sidebar.selectbox("Select Year:", years, key="selected_year")
+    # Define ONLY ONE Selectbox for Country and Year
+    selected_country = st.sidebar.selectbox("Select Country:", countries)
+    selected_year    = st.sidebar.selectbox("Select Year:", years)
 
+    # Filter the dataframe
     filtered = df_long.copy()
     if selected_country != "All":
         filtered = filtered[filtered["Country"] == selected_country]
