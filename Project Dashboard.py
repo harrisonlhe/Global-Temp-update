@@ -238,29 +238,45 @@ if page == "Explore Trends":
         """)
 
 # ─── Warming Gases Page ───────
+# ─── Warming Gases Page ────────────────────────────────
 if page == "Warming Gases":
-    st.subheader("🔥 Warming Contributions by Gas and Source")
+    st.subheader("🔥 Share of Global Warming Contribution by Entity")
     st.info("""
-    This area chart shows **the warming impact of major greenhouse gases and emission sources over time**.
-    Click the legend to highlight or filter different contributors.
+    This area chart shows the **relative share of global warming** attributed to different entities (e.g., countries or emission sources) over time.
+    Click the legend to isolate contributors and explore their trend over the years.
     """)
 
-    selection = alt.selection_point(fields=['series'])
-    condition = alt.condition(selection, 'series:N', alt.ColorValue('lightgray'))
+    # Load and preprocess
+    df_gas = pd.read_csv("contributions-global-temp-change.csv")
+    df_gas = df_gas.rename(columns={
+        "Entity": "Contributor",
+        "Share of contribution to global warming": "Share"
+    })
+    df_gas = df_gas[["Year", "Contributor", "Share"]].dropna()
 
-    area = alt.Chart(gas_long).mark_area(opacity=0.7).encode(
-        x=alt.X("Year:O", title="Year"),
-        y=alt.Y("Temp Change:Q", title="Temperature Change (°C)"),
-        color=condition,
-        order="series:N",
-        tooltip=['Year:O', 'series:N', 'Temp Change:Q']
-    ).add_params(selection).properties(
-        width=900,
-        height=500,
-        title="Warming Contributions by Gas Type and Emission Source"
+    # Interactive selection
+    selection = alt.selection_point(fields=["Contributor"])
+    condition = alt.condition(selection, "Contributor:N", alt.ColorValue("lightgray"))
+
+    area_chart = (
+        alt.Chart(df_gas)
+        .mark_area(opacity=0.7)
+        .encode(
+            x=alt.X("Year:O", title="Year"),
+            y=alt.Y("Share:Q", title="Share of Global Warming"),
+            color=condition,
+            order="Contributor:N",
+            tooltip=["Year:O", "Contributor:N", alt.Tooltip("Share:Q", format=".2%")]
+        )
+        .add_params(selection)
+        .properties(
+            width=900,
+            height=500,
+            title="Warming Contributions by Entity (Share % over Time)"
+        )
     )
 
-    st.altair_chart(area, use_container_width=True)
+    st.altair_chart(area_chart, use_container_width=True)
 
 # ─── Chat Assistant Page ────────────────────────────────
 if page == "Chat Assistant":
