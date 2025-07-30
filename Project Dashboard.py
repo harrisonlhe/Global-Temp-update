@@ -120,13 +120,13 @@ def load_gas_data():
     return gas_long
 
 # ─── Sidebar Filters ───────────────
-if page not in ["Home", "Chat Assistant"]:
+if page in ["Explore Trends", "Warming Gases"]:
     st.sidebar.header("🔍 Filters")
     countries = ["All"] + sorted(df_long["Country"].unique())
     years     = ["All"] + sorted(df_long["Year"].unique())
 
-    selected_country = st.sidebar.selectbox("Country", countries)
-    selected_year    = st.sidebar.selectbox("Year", years)
+    selected_country = st.sidebar.selectbox("Select Country:", countries)
+    selected_year    = st.sidebar.selectbox("Select Year:", years)
 
     filtered = df_long.copy()
     if selected_country != "All":
@@ -311,7 +311,7 @@ if page == "Warming Gases":
 if page == "Chat Assistant":
     st.subheader("🧠 ClimateBot Assistant")
     st.markdown("""
-    Ask **ClimateBot** anything about:
+    Ask **ClimateBot** about:
     - 📈 Temperature trends over time
     - 🌡️ Country-level comparisons
     - 🔻 Variability and climate stability
