@@ -16,14 +16,7 @@ st.title("🌍 Global Temperature Story  🌡️")
 st.image(
     "https://raw.githubusercontent.com/PReece11/Global-Temp/main/pexels-arthousestudio-4310289.jpg",
     caption="Image from Pexels (Credit: Arthousestudio)",
-    use_container_width=True
-)
-
-# Display the global temperature animation
-st.image(
-    "https://upload.wikimedia.org/wikipedia/commons/3/33/Global_temperature_anomalies_-_1880-present.gif",
-    caption="Global Temperature Anomalies Since 1880 (Credit: NASA)",
-    use_container_width=True
+    width=600  
 )
 
 st.write("""
