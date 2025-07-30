@@ -172,9 +172,40 @@ if page == "Explore Trends":
 
             st.altair_chart(line, use_container_width=True)
 
+            st.subheader("🌡️ Temperature Trends Across Countries")
+        alt.data_transformers.disable_max_rows()
+
+        # Interactive highlight
+        sel_country = alt.selection_point(fields=["Country"], empty="all")
+
+        if selected_country == "All":
+            sample_countries = df_long["Country"].unique()[:10]
+            scatter_data = df_long[df_long["Country"].isin(sample_countries)]
+        else:
+            scatter_data = filtered
+
+        scatter_chart = (
+            alt.Chart(scatter_data)
+            .mark_circle(size=60)
+            .encode(
+                x=alt.X("Year:O", title="Year"),
+                y=alt.Y("TempChange:Q", title="Temperature Change (°C)"),
+                color=alt.Color("TempChange:Q", scale=alt.Scale(scheme="plasma", domainMid=0)),
+                opacity=alt.condition(sel_country, alt.value(1), alt.value(0.15)),
+                tooltip=["Country", "Year", "TempChange"]
+            )
+            .add_params(sel_country)
+            .properties(
+                width=800,
+                height=500,
+                title=f"Temperature Change Over Time – {selected_country if selected_country != 'All' else 'Sample of Countries'}"
+            )
+        )
+        st.altair_chart(scatter_chart, use_container_width=True)
+
     # 🌡️ Scatter Plot
     with tab2:
-        st.subheader("🌡️ Country Temperature Trends")
+        st.subheader("🌡️ Temperature Trends Across Countries")
         alt.data_transformers.disable_max_rows()
         sel_country = alt.selection_point(fields=["Country"], empty="all")
 
