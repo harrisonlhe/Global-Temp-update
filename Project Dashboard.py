@@ -1,81 +1,261 @@
+# 🌍 GLOBAL TEMPERATURE STORY DASHBOARD — NASA Style + YoY + Overview
 import streamlit as st
 import pandas as pd
 import altair as alt
-import numpy as np
 
-st.set_page_config(page_title="NASA-style Climate Dashboard", page_icon="🌍", layout="wide")
-
-# ─── Hero Section ───────────────────────────────────────────────
-st.markdown("""
-    <div style='
-        background-image: url("https://raw.githubusercontent.com/PReece11/Global-Temp/main/pexels-arthousestudio-4310289.jpg");
-        background-size: cover;
-        padding: 80px 20px;
-        border-radius: 10px;
-        text-align: center;
-        color: white;
-    '>
-        <h1 style='font-size: 3em; font-weight: bold;'>🌍 Global Climate Dashboard</h1>
-        <p style='font-size: 1.2em;'>Tracking Temperature Trends, GHG Impacts, and Global Forecasts</p>
-    </div>
-""", unsafe_allow_html=True)
-
-# ─── Stats Bar ─────────────────────────────────────────────────
-st.markdown("""
-<div style='display: flex; justify-content: space-around; padding: 20px 0; font-size: 1.1em; font-weight: bold;'>
-    <div style='color: #ff5733;'>🔥 Global Temp ↑ <br><span style='font-size:1.5em;'>+1.1°C</span></div>
-    <div style='color: #33b5e5;'>🌊 Sea Level Rise <br><span style='font-size:1.5em;'>+100 mm</span></div>
-    <div style='color: #2ecc71;'>🌿 CO₂ (ppm) <br><span style='font-size:1.5em;'>419.3</span></div>
-</div>
-""", unsafe_allow_html=True)
-
-# ─── Education Panel ──────────────────────────────────────────
-st.markdown("""
-<div style="background-color: #f9f9f9; padding: 30px; border-radius: 10px;">
-<h3>🔬 What is the Greenhouse Effect?</h3>
-<p>
-The greenhouse effect occurs when gases in Earth's atmosphere trap heat. This process makes Earth much warmer than it would be without an atmosphere. It's one of the things that makes Earth a comfortable place to live.
-</p>
-<ul>
-    <li><strong>Natural GHGs:</strong> Water vapor, CO₂, CH₄</li>
-    <li><strong>Human Activity:</strong> Fossil fuels and deforestation intensify this effect</li>
-</ul>
-</div>
-""", unsafe_allow_html=True)
-
-# ─── Chart Description ────────────────────────────────────────
-st.markdown("## 📈 Simulation of Temperature Outcomes")
-st.markdown("This chart shows a range of possible outcomes modeled on recent data. It does **not** predict a single value, but rather simulates many plausible futures.")
-
-# ─── Simulated Chart (placeholder) ────────────────────────────
-df_example = pd.DataFrame({
-    "Country": [f"Country {i}" for i in range(1, 101)],
-    "Avg_Change": np.random.normal(loc=1.2, scale=0.5, size=100)
-})
-
-scatter = (
-    alt.Chart(df_example)
-    .mark_circle(size=100)
-    .encode(
-        x=alt.X("Avg_Change:Q", title="Simulated Avg Temp Change (°C)", scale=alt.Scale(zero=False)),
-        y=alt.Y("Country:N", sort='-x', title=None),
-        color=alt.condition(
-            "datum.Avg_Change > 1.5", alt.value("#d62728"),  # red
-            alt.condition("datum.Avg_Change < 0.5", alt.value("#1f77b4"), alt.value("#999999"))
-        ),
-        tooltip=["Country:N", "Avg_Change:Q"]
-    )
-    .properties(
-        width=800,
-        height=600,
-        title="Distribution of Simulated Country-Level Temperature Change"
-    )
+# ─── Page Config ────────────────────────────────────────────
+st.set_page_config(
+    page_title="Temperature Dashboard",
+    page_icon="🌍",
+    layout="wide"
 )
 
-st.altair_chart(scatter, use_container_width=True)
+# ─── Hero Section ───────────────────────────────────────────
+st.markdown(
+    """
+    <style>
+        .hero {
+            background-image: url('https://www.nasa.gov/sites/default/files/thumbnails/image/earth.jpg'); 
+            background-size: cover; 
+            padding: 100px 0;
+            margin-bottom: 20px;
+            color: white;
+            text-align: center;
+        }
+        .description {
+            text-align: center;
+            line-height: 1.6;
+            font-size: 18px;
+        }
+    </style>
+    <div class="hero" role="region" aria-label="Header with Earth image and dashboard title">
+        <h1>🌍 Temperature Dashboard 🌡️</h1>
+        <p>An interactive exploration of monthly and yearly global temperature trends.</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-# ─── Footer ─────────────────────────────────────────────────
-st.markdown("""
----
-<small>Data source: Simulated | Design inspired by <a href='https://science.nasa.gov/climate-change/' target='_blank'>NASA Climate Change</a>.</small>
-""", unsafe_allow_html=True)
+st.write(
+    """
+    <div class='description'>
+        Explore how <strong>temperature changes over decades</strong> using interactive visualizations. 
+        Hover over charts, filter by countries, or analyze seasonal patterns individually.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown("---")
+
+# ─── Sidebar Navigation ─────────────────────────────────────
+st.sidebar.title("Navigation")
+st.sidebar.caption("🔑 Use keyboard ↑↓ or type to search options.")
+page = st.sidebar.radio(
+    "Go to:",
+    ["Home", "Scatter Plot (Global Trends)", "Year-over-Year Trend", "Monthly Analysis"],
+    index=0
+)
+
+# ─── Data Load and Prep ─────────────────────────────────────
+@st.cache_data
+def load_data():
+    df = pd.read_csv("Indicator_3_1_Climate_Indicators_Annual_Mean_Global_Surface_Temperature_577579683071085080.csv")
+    year_cols = [c for c in df.columns if c.isdigit()]
+    df_long = df.melt(
+        id_vars=["Country", "ISO2", "ISO3", "Indicator", "Unit"],
+        value_vars=year_cols,
+        var_name="Year",
+        value_name="TempChange"
+    )
+    df_long["Year"] = df_long["Year"].astype(int)
+    df_long.sort_values(["Country", "Year"], inplace=True)
+    return df_long
+
+df_long = load_data()
+
+# ─── Sidebar Filters ────────────────────────────────────────
+if page != "Home":
+    st.sidebar.header("🔍 Filters")
+    countries = ["All"] + sorted(df_long["Country"].unique())
+    years     = ["All"] + sorted(df_long["Year"].unique())
+
+    selected_country = st.sidebar.selectbox("Country", countries)
+    selected_year    = st.sidebar.selectbox("Year", years)
+
+    filtered = df_long.copy()
+    if selected_country != "All":
+        filtered = filtered[filtered["Country"] == selected_country]
+    if selected_year != "All":
+        filtered = filtered[filtered["Year"] == selected_year]
+
+# ─── Home Page ──────────────────────────────────────────────
+if page == "Home":
+    st.write("""
+    ### About This Dashboard
+    Over the past century, the Earth's surface temperature has experienced significant changes due to various natural and anthropogenic factors. This dashboard explores key global temperature trends, anomalies, and projections to provide insights into the ongoing climate challenges.
+
+    **How Gases Affect Temperature**  
+    Greenhouse gases, like carbon dioxide (CO2), methane (CH4), and water vapor, trap heat in the Earth's atmosphere. This natural process, called the greenhouse effect, maintains the Earth's habitable temperature. However, excessive emissions from human activities, including burning fossil fuels and deforestation, amplify this effect, leading to global warming and climate changes.
+
+    Explore the visualizations to understand the impacts of these changes and potential mitigation strategies.
+    """)
+
+# ─── Scatter Plot Page ──────────────────────────────────────
+elif page == "Scatter Plot (Global Trends)":
+    st.markdown("### 🌡️ Temperature Changes by Year (Scatter Plot)")
+    st.info("""
+    This scatter plot shows temperature deviations from baseline values for selected countries over time.
+    - **Purple = cooler**, **yellow = warmer** (colorblind-friendly).
+    - Click a country to highlight trends; hover to view details.
+    """)
+
+    alt.data_transformers.disable_max_rows()
+    sel_country = alt.selection_point(fields=["Country"], empty="all")
+
+    if selected_country == "All":
+        sample_countries = df_long["Country"].unique()[:10]
+        scatter_data = df_long[df_long["Country"].isin(sample_countries)]
+    else:
+        scatter_data = filtered
+
+    scatter = (
+        alt.Chart(scatter_data)
+        .mark_circle(size=60)
+        .encode(
+            x=alt.X("Year:O"),
+            y=alt.Y("TempChange:Q", title="Temperature Change (°C)"),
+            color=alt.Color("TempChange:Q", scale=alt.Scale(scheme="plasma", domainMid=0)),
+            opacity=alt.condition(sel_country, alt.value(1), alt.value(0.15)),
+            tooltip=[
+                alt.Tooltip("Country:N", title="Country"),
+                alt.Tooltip("Year:O", title="Year"),
+                alt.Tooltip("TempChange:Q", title="Temperature Change (°C)")
+            ]
+        )
+        .transform_filter(sel_country)
+        .properties(
+            height=400,
+            width=750,
+            title=f"Temperature Change Over Time – {selected_country if selected_country != 'All' else 'Sample of Countries'}"
+        )
+    )
+
+    st.altair_chart(scatter, use_container_width=True)
+
+    st.markdown("### 🔻 Countries with Decreasing Temperature Variability")
+    st.info("""
+    This bar chart compares the **standard deviation of temperature change** before and after 1993.
+    A **negative delta** means a country has become more stable in its yearly climate variation.
+    """)
+
+    early = (
+        df_long[df_long["Year"] <= 1992]
+        .groupby("Country")["TempChange"].std()
+        .reset_index(name="Std_Early")
+    )
+    late = (
+        df_long[df_long["Year"] >= 1993]
+        .groupby("Country")["TempChange"].std()
+        .reset_index(name="Std_Late")
+    )
+    std_comp = early.merge(late, on="Country")
+    std_comp["Delta_Std"] = std_comp["Std_Late"] - std_comp["Std_Early"]
+    decreasing = std_comp[std_comp["Delta_Std"] < 0].sort_values("Delta_Std")
+
+    bar = (
+        alt.Chart(decreasing)
+        .mark_bar()
+        .encode(
+            x=alt.X("Delta_Std:Q", title="Δ Std Dev (1993–2024 − 1961–1992)"),
+            y=alt.Y("Country:N", sort="-x"),
+            color=alt.Color("Delta_Std:Q", scale=alt.Scale(scheme="plasma", domainMid=0)),
+            tooltip=[
+                alt.Tooltip("Country:N", title="Country"),
+                alt.Tooltip("Std_Early:Q", title="Std Dev (1961–1992)"),
+                alt.Tooltip("Std_Late:Q", title="Std Dev (1993–2024)"),
+                alt.Tooltip("Delta_Std:Q", title="Δ Std Dev")
+            ]
+        )
+        .add_params(sel_country)
+        .properties(
+            height=500,
+            width=750,
+            title="Countries with Decreasing Temperature Variability"
+        )
+    )
+
+    st.altair_chart(bar, use_container_width=True)
+
+# ─── Year-over-Year Trend Page ─────────────────────────────
+elif page == "Year-over-Year Trend":
+    st.subheader("📈 Year-over-Year Change in Temperature")
+    st.info("""
+    This line chart shows how much **temperature change fluctuates year-over-year** for a selected country.
+    - Helps detect acceleration or deceleration in warming.
+    """)
+
+    if selected_country == "All":
+        st.warning("Please select a specific country to view Year-over-Year changes.")
+    else:
+        yoy_data = df_long[df_long["Country"] == selected_country].copy()
+        yoy_data["YoY_Change"] = yoy_data["TempChange"].diff()
+
+        line = alt.Chart(yoy_data).mark_line(point=True).encode(
+            x=alt.X("Year:O"),
+            y=alt.Y("YoY_Change:Q", title="Change from Previous Year (°C)"),
+            color=alt.value("#f45b69"),
+            tooltip=[
+                alt.Tooltip("Year:O", title="Year"),
+                alt.Tooltip("YoY_Change:Q", title="Year-over-Year Change (°C)", format=".3f")
+            ]
+        ).properties(
+            width=800,
+            height=450,
+            title=f"Year-over-Year Temperature Change – {selected_country}"
+        )
+
+        st.altair_chart(line, use_container_width=True)
+
+# ─── Monthly Analysis Page ─────────────────────────────────
+elif page == "Monthly Analysis":
+    st.subheader("📅 Monthly Average Temperature Change")
+    st.info("""
+    This placeholder line chart illustrates how monthly averages may look.
+    Use it to explore **seasonal climate patterns** over the years.
+    (Real monthly data can be substituted here.)
+    """)
+
+    df_monthly = pd.DataFrame({
+        'Month_named': ['January', 'February', 'March'],
+        'Monthly Average Temperature Change (°C)': [0.2, 0.3, 0.4],
+        'Year': [2001, 2002, 2003],
+    })
+
+    monthly_line = alt.Chart(df_monthly).mark_line().encode(
+        x=alt.X("Month_named:N", title="Month"),
+        y=alt.Y("Monthly Average Temperature Change (°C):Q", title="Temperature Change (°C)"),
+        color=alt.Color("Year:N", scale=alt.Scale(scheme="viridis"), legend=alt.Legend(title="Year")),
+        tooltip=[
+            alt.Tooltip("Year:O", title="Year"),
+            alt.Tooltip("Monthly Average Temperature Change (°C):Q", title="Avg Temp Change (°C)")
+        ]
+    ).properties(
+        width=800,
+        height=500,
+        title="Seasonal Average Temperature Change"
+    )
+
+    st.altair_chart(monthly_line, use_container_width=True)
+
+# ─── Footer ────────────────────────────────────────────────
+st.markdown("---")
+st.write(
+    """
+    <div style="text-align: center;" role="contentinfo" aria-label="Footer">
+        Brought to you by <strong>NASA-inspired Data Exploration Team</strong>. 
+        <a href="https://www.nasa.gov/" target="_blank">Visit NASA</a> for official climate data.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
