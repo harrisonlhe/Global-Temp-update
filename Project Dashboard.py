@@ -131,20 +131,21 @@ if page == "Home":
     Explore the visualizations to understand the impacts of these changes and potential mitigation strategies.
     """)
     
-# ─── Explore Trends Page Tabs ─────────────────────
 if page == "Explore Trends":
-    tab1, tab2, tab3, tab4 = st.tabs(["📈 Year-over-Year", "🌡️ Scatter Plot", "🔻 Variability", "🌍 Economic Status"])
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📈 Year-over-Year",
+        "🌡️ Scatter Plot",
+        "🔻 Variability",
+        "🌍 Economic Status"
+    ])
 
-    selected_country = st.sidebar.selectbox("Select Country:", ["All"] + sorted(df_long["Country"].unique()))
-    filtered = df_long[df_long["Country"] == selected_country] if selected_country != "All" else df_long
-
-    # Year-over-Year Trend
+    # 📈 Year-over-Year Trend
     with tab1:
         st.subheader("📈 Historical Year-over-Year Temperature Changes (1961–2004)")
         if selected_country == "All":
             st.warning("Please select a specific country to view Year-over-Year changes.")
         else:
-            yoy_data = df_long[df_long["Country"] == selected_country].copy()
+            yoy_data = filtered.copy()
             yoy_data["YoY_Change"] = yoy_data["TempChange"].diff()
 
             line = alt.Chart(yoy_data).mark_line(point=True).encode(
@@ -160,7 +161,7 @@ if page == "Explore Trends":
 
             st.altair_chart(line, use_container_width=True)
 
-    # Scatter Plot
+    # 🌡️ Scatter Plot
     with tab2:
         st.subheader("🌡️ Country Temperature Trends")
         alt.data_transformers.disable_max_rows()
@@ -183,18 +184,19 @@ if page == "Explore Trends":
             width=800,
             title=f"Temperature Change Over Time – {selected_country if selected_country != 'All' else 'Sample of Countries'}"
         )
+
         st.altair_chart(scatter, use_container_width=True)
 
-    # Variability Analysis
+    # 🔻 Variability Analysis
     with tab3:
         st.subheader("🔻 Countries with Decreasing Temperature Variability")
         st.info(
             """
             This chart compares the **standard deviation of temperature change** before and after 1993.
-            A **negative delta** indicates more stable climate conditions. Lower variability can reflect reduced
-            extremes or smoothing of seasonal temperature fluctuations.
+            A **negative delta** indicates more stable climate conditions.
             """
         )
+
         early = df_long[df_long["Year"] <= 1992].groupby("Country")["TempChange"].std().reset_index(name="Std_Early")
         late = df_long[df_long["Year"] >= 1993].groupby("Country")["TempChange"].std().reset_index(name="Std_Late")
         std_comp = early.merge(late, on="Country")
@@ -211,15 +213,26 @@ if page == "Explore Trends":
             width=750,
             title="Top Countries with Decreasing Yearly Temperature Variability"
         )
+
         st.altair_chart(bar, use_container_width=True)
 
-    # Developed vs Developing
+    # 🌍 Developed vs Developing Comparison
     with tab4:
         st.subheader("🌍 Developed vs Developing: Temperature Comparison")
-        dev_year_range = [df_long["Year"].min(), df_long["Year"].max()]
+        
+        st.write(
+            """
+            Developed countries, often referred to as "high-income" nations, typically have advanced technological infrastructure,
+            high standards of living, and robust economies. Examples include the United States, Germany, and Japan.
+
+            Developing countries face challenges like limited access to education, healthcare, and infrastructure.
+            Examples include India, Nigeria, and Bangladesh.
+            """
+        )
         dev_sel = alt.selection_multi(fields=["DevStatus"], bind="legend")
 
         dev_avg = df_long.groupby(["Year", "DevStatus"])["TempChange"].mean().reset_index()
+
         line_chart = alt.Chart(dev_avg).mark_line(point=True).encode(
             x=alt.X("Year:O"),
             y=alt.Y("TempChange:Q", title="Avg Temp Change (°C)"),
@@ -231,10 +244,12 @@ if page == "Explore Trends":
             width=750,
             height=400
         )
+
         st.altair_chart(line_chart, use_container_width=True)
 
         df_long["YearGroup"] = (df_long["Year"] // 5) * 5
         dev_bar = df_long.groupby(["YearGroup", "DevStatus"])["TempChange"].mean().reset_index()
+
         bar_chart = alt.Chart(dev_bar).mark_bar().encode(
             x=alt.X("YearGroup:O", title="5-Year Group"),
             y=alt.Y("TempChange:Q", title="Avg Temp Change (°C)"),
@@ -242,24 +257,13 @@ if page == "Explore Trends":
             opacity=alt.condition(dev_sel, alt.value(1.0), alt.value(0.25)),
             tooltip=["YearGroup", "DevStatus", "TempChange"]
         ).add_params(dev_sel).properties(
-            title="5-Year Average Temperature Change by Development Status",
+            title="5-Year Avg Temp Change by Development Status",
             width=750,
             height=400
         )
+
         st.altair_chart(bar_chart, use_container_width=True)
 
-        st.write(
-            """
-            Developed countries, often referred to as "high-income" nations, typically have advanced technological infrastructure,
-            high standards of living, and robust economies. Examples include the United States, Germany, and Japan.
-
-            In contrast, developing countries, or "low to middle-income" nations, often face challenges like lower economic growth,
-            limited access to education and healthcare, and higher poverty rates. Examples include India, Nigeria, and Bangladesh.
-
-            The distinction isn't always clear-cut, as some nations exhibit characteristics of both.
-            """
-        )
-       
 # ─── Warming Gases Page ─────────────────────────────────────
 if page == "Warming Gases":
     st.subheader("🔥 Warming Contributions by Gas and Source")
