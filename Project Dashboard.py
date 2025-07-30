@@ -59,7 +59,6 @@ page = st.sidebar.radio(
 
 # ─── Data Load and Prep ────────────────────
 @st.cache_data
-
 def load_data():
     df = pd.read_csv("Indicator_3_1_Climate_Indicators_Annual_Mean_Global_Surface_Temperature_577579683071085080.csv")
     year_cols = [c for c in df.columns if c.isdigit()]
@@ -74,6 +73,35 @@ def load_data():
     return df_long
 
 df_long = load_data()
+
+@st.cache_data
+def load_gas_data():
+    df2 = pd.read_csv("contributions-global-temp-change.csv")
+    df2 = df2[(df2["Year"] >= 1961) & (df2["Year"] <= 2004)]
+    gas_cols = [c for c in df2.columns if c.startswith("Change in")]
+    col_map = {
+        col: (
+            "N2O_FF&I" if "nitrous oxide" in col and "fossil fuels" in col else
+            "N2O_AgLU" if "nitrous oxide" in col else
+            "CH4_FF&I" if "methane" in col and "fossil fuels" in col else
+            "CH4_AgLU" if "methane" in col else
+            "CO2_FF&I" if "fossil fuels" in col else 
+            "CO2_AgLU"
+        )
+        for col in gas_cols
+    }
+    df2 = df2[df2["Entity"] == "World"].copy()
+    df2.drop(columns=["Code"], inplace=True, errors="ignore")
+    df2.rename(columns=col_map, inplace=True)
+    gas_long = df2.melt(
+        id_vars="Year",
+        value_vars=list(col_map.values()),
+        var_name="series",
+        value_name="Temp Change"
+    )
+    return gas_long
+
+gas_long = load_gas_data()
 
 # Load gas warming data
 @st.cache_data
@@ -236,6 +264,64 @@ if page == "Explore Trends":
 
         The distinction isn't always clear-cut, as some nations exhibit characteristics of both.
         """)
+
+# ─── Warming Gases Page ─────────────────────────
+st.markdown(
+if page == "Warming Gases":
+    st.subheader("🔥 Warming Contributions by Gas and Source")
+    st.info("""
+    This area chart shows the **warming impact of greenhouse gases** like CO₂, CH₄, and N₂O from 
+    sources like fossil fuels, agriculture, and land use. Click the legend to filter each source.
+    """)
+
+    chart_country = "World"  # or use selected_country if making interactive
+    dev_year_range = (1961, 2004)  # adjust as needed
+
+    # Filter and prepare data
+    df2 = pd.read_csv("contributions-global-temp-change.csv")
+    df2 = df2[(df2["Year"] >= dev_year_range[0]) & (df2["Year"] <= dev_year_range[1])]
+    
+    gas_cols = [c for c in df2.columns if c.startswith("Change in")]
+    col_map = {
+        col: (
+            "N2O_FF&I" if "nitrous oxide" in col and "fossil fuels" in col else
+            "N2O_AgLU" if "nitrous oxide" in col else
+            "CH4_FF&I" if "methane" in col and "fossil fuels" in col else
+            "CH4_AgLU" if "methane" in col else
+            "CO2_FF&I" if "fossil fuels" in col else 
+            "CO2_AgLU"
+        )
+        for col in gas_cols
+    }
+
+    gas_df = df2[df2["Entity"] == chart_country].copy()
+    gas_df.drop(columns=["Code"], inplace=True, errors="ignore")
+    gas_df.rename(columns=col_map, inplace=True)
+
+    gas_long = gas_df.melt(
+        id_vars="Year",
+        value_vars=list(col_map.values()),
+        var_name="series",
+        value_name="Temp Change"
+    )
+
+    # Interactive Selection
+    selection = alt.selection_point(fields=["series"])
+    condition = alt.condition(selection, "series:N", alt.ColorValue("lightgray"))
+
+    area_chart = alt.Chart(gas_long).mark_area(opacity=0.7).encode(
+        x=alt.X("Year:O", title="Year"),
+        y=alt.Y("Temp Change:Q", title="Temperature Change (°C)"),
+        color=condition,
+        order="series:N",
+        tooltip=["Year:O", "series:N", "Temp Change:Q"]
+    ).add_params(selection).properties(
+        title=f"Warming by Gas and Source ({chart_country})",
+        width=850,
+        height=450
+    )
+
+    st.altair_chart(area_chart, use_container_width=True)
 
 # ─── Chat Assistant Page ────────────────────────────────
 if page == "Chat Assistant":
