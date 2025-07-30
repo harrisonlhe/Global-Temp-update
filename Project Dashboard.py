@@ -15,7 +15,7 @@ st.markdown(
     """
     <style>
         .hero {
-            background-image: url('https://www.nasa.gov/sites/default/files/thumbnails/image/earth.jpg'); 
+            background-image: url('https://github.com/PReece11/Global-Temp/blob/main/ChatGPT%20Image%20Jul%2030,%202025,%2011_22_32%20AM.png?raw=true'); 
             background-size: cover; 
             padding: 100px 0;
             margin-bottom: 20px;
