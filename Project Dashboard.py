@@ -1,10 +1,3 @@
-# ───────────────────────────────────────────────────────────
-#  🌍  GLOBAL TEMPERATURE STORY DASHBOARD  (Streamlit + Altair)
-# ───────────────────────────────────────────────────────────
-import streamlit as st
-import pandas as pd
-import altair as alt
-
 # ─── Page set‑up ────────────────────────────────────────────
 st.set_page_config(page_title="Global Temperature Dashboard",
                    page_icon="🌍",
@@ -12,6 +5,14 @@ st.set_page_config(page_title="Global Temperature Dashboard",
 
 st.title("🌍 Global Temperature Story  🌡️")
 
+# Display the local image from GitHub
+st.image(
+    "https://raw.githubusercontent.com/PReece11/Global-Temp/main/pexels-arthousestudio-4310289.jpg",  # Raw URL of the image
+    caption="Image from Pexels (Credit: Arthousestudio)",
+    use_container_width=True
+)
+
+# Display the global temperature animation
 st.image(
     "https://upload.wikimedia.org/wikipedia/commons/3/33/Global_temperature_anomalies_-_1880-present.gif",
     caption="Global Temperature Anomalies Since 1880 (Credit: NASA)",
@@ -27,5 +28,3 @@ Greenhouse gases, like carbon dioxide (CO2), methane (CH4), and water vapor, tra
 
 Explore the visualizations to understand the impacts of these changes and potential mitigation strategies.
 """)
-
-
