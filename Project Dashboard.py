@@ -134,6 +134,9 @@ if page in ["Explore Trends", "Warming Gases"]:
     if selected_year != "All":
         filtered = filtered[filtered["Year"] == selected_year]
 
+    # Default to All
+    selected_country_final = selected_country if selected_country != "All" else "All"
+
 # ─── Home Page ───────────────────────────── 
 if page == "Home":
     st.write("""
