@@ -47,41 +47,31 @@ developed_iso3 = ["USA", "CAN", "GBR", "DEU", "FRA", "JPN",
                   "AUS", "NZL", "NOR", "SWE", "CHE"]
 df_long["DevStatus"] = df_long["ISO3"].apply(lambda x: "Developed" if x in developed_iso3 else "Developing")
 
-# ─── Load Additional Datasets ──────────────────────────────
-df2 = pd.read_csv("global-warming-by-gas-and-source.csv")
-df_monthly = pd.read_csv("df_monthly_long.csv")
-df_monthly['Date'] = pd.to_datetime(df_monthly[['Year', 'Month']].assign(DAY=1))
-df_monthly.rename(columns={'Mean_Temp':'Monthly Average Temperature Change (°C)'}, inplace=True)
-df_contribution = pd.read_csv("contributions-global-temp-change.csv")
-
 # ─── Sidebar Filters ───────────────────────────────────────
-data_long_list = list(df_long["Country"].unique())
-data_contribution_list = list(df_contribution['Entity'].unique())
-df_monthly_list = list(df_monthly["Entity"].unique())
-df2_list = list(df2['Entity'].unique())
-in_all = [x for x in data_long_list if x in data_contribution_list and x in df_monthly_list and x in df2_list]
-
-all_countries = ["All"] + sorted(in_all)
+all_countries = ["All"] + sorted(df_long["Country"].unique())
 year_min, year_max = int(df_long["Year"].min()), int(df_long["Year"].max())
 
-with st.sidebar.expander("📊 Charts Filters", expanded=True):
+with st.sidebar.expander("📊 Filters", expanded=True):
     chart_country = st.selectbox("Country", all_countries, key="chart_country")
-
-with st.sidebar.expander("🌐 Select Time Period", expanded=False):
-    dev_year_range = st.slider("Year Range",
-                               min_value=year_min,
-                               max_value=year_max,
-                               value=(year_min, year_max),
-                               step=1,
-                               key="dev_year_range")
+    year_range = st.slider("Select Year Range",
+                           min_value=year_min,
+                           max_value=year_max,
+                           value=(year_min, year_max),
+                           step=1,
+                           key="year_slider")
 
 # ─── Filter Data ────────────────────────────────────────────
-filtered_chart = df_long[(df_long["Year"] >= dev_year_range[0]) & (df_long["Year"] <= dev_year_range[1])].copy()
+filtered_chart = df_long[
+    (df_long["Year"] >= year_range[0]) & (df_long["Year"] <= year_range[1])
+].copy()
+
 if chart_country != "All":
     filtered_chart = filtered_chart[filtered_chart["Country"] == chart_country]
 
-# Placeholder chart for now
+# ─── Altair Transformer ─────────────────────────────────────
 alt.data_transformers.disable_max_rows()
+
+# ─── Scatter Plot by Country ───────────────────────────────
 sample = filtered_chart.groupby("Country")["TempChange"].mean().reset_index().rename(columns={"TempChange": "Avg_Change"})
 if len(sample) > 100:
     sample = sample.sample(100, random_state=42)
@@ -110,6 +100,7 @@ st.altair_chart(scatter, use_container_width=True)
 # ─── Data Tab Preview ──────────────────────────────────────
 st.markdown("### 📋 Explore the Filtered Dataset")
 st.dataframe(filtered_chart)
+
 st.download_button(
     label="📥 Download Filtered Temperature Data",
     data=filtered_chart.to_csv(index=False),
