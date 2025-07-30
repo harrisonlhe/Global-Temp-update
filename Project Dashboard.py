@@ -57,14 +57,13 @@ st.sidebar.markdown("""
 - You can **type to filter** or use your **arrow keys** to move.
 - Choose **Explore Trends** to interact with charts over time.
 - Switch to **Warming Gases** to analyze gas-specific impacts.
-- Use **Dev Status Comparison** to compare developed vs. developing countries.
 - Try **Chat Assistant** to ask questions about the data.
 """)
 
 page = st.sidebar.radio(
     "Go to:",
-    ["Explore Trends", "Warming Gases", "Chat Assistant", "Dev Status Comparison"],
-    index=0
+    ["Home", "Explore Trends", "Warming Gases", "Chat Assistant"],
+    index=1
 )
 
 # ─── Data Load and Prep ─────────────────
@@ -271,6 +270,7 @@ if page == "Explore Trends":
 
         The distinction isn't always clear-cut, as some nations exhibit characteristics of both.
         """)
+        
 # ─── Warming Gases Page ─────────────────────────────────────
 if page == "Warming Gases":
     st.subheader("🔥 Warming Contributions by Gas and Source")
@@ -333,7 +333,7 @@ if page == "Chat Assistant":
         st.chat_message("user").markdown(prompt)
         st.session_state.chat_history.append({"role": "user", "content": prompt})
 
-        # Example hard-coded Q&A for demonstration
+        # Hard-coded Q&A for demonstration
         response = ""
         q = prompt.lower()
 
