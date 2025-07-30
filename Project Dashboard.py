@@ -126,9 +126,9 @@ if page not in ["Home", "Chat Assistant"]:
     countries = ["All"] + sorted(df_long["Country"].unique())
     years     = ["All"] + sorted(df_long["Year"].unique())
 
-    # Define ONLY ONE Selectbox for Country and Year
-    selected_country = st.sidebar.selectbox("Select Country:", countries)
-    selected_year    = st.sidebar.selectbox("Select Year:", years)
+    # ✅ Add unique keys to avoid conflict with Explore Trends tab
+    selected_country = st.sidebar.selectbox("Select Country:", countries, key="global_country")
+    selected_year    = st.sidebar.selectbox("Select Year:", years, key="global_year")
 
     # Filter the dataframe
     filtered = df_long.copy()
