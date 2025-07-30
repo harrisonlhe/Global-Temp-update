@@ -5,7 +5,7 @@ import altair as alt
 
 # ─── Page Config ────────────────────────────────────────────
 st.set_page_config(
-    page_title="Temperature Dashboard",
+    page_title="Global Temperature Change",
     page_icon="🌍",
     layout="wide"
 )
