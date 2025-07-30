@@ -237,43 +237,59 @@ if page == "Explore Trends":
         The distinction isn't always clear-cut, as some nations exhibit characteristics of both.
         """)
 
-# ─── Warming Gases Page ───────
-# ─── Warming Gases Page ────────────────────────────────
+# Warming Gases Section
 if page == "Warming Gases":
-    st.subheader("🔥 Share of Global Warming Contribution by Entity")
+    st.subheader("🔥 Warming Contributions by Gas and Source")
     st.info("""
-    This area chart shows the **relative share of global warming** attributed to different entities (e.g., countries or emission sources) over time.
-    Click the legend to isolate contributors and explore their trend over the years.
+    This area chart shows the **warming impact of greenhouse gases** like CO₂, CH₄, and N₂O from 
+    sources like fossil fuels, agriculture, and land use. Click the legend to filter each source.
     """)
 
-    # Load and preprocess
-    df_gas = pd.read_csv("contributions-global-temp-change.csv")
-    df_gas = df_gas.rename(columns={
-        "Entity": "Contributor",
-        "Share of contribution to global warming": "Share"
-    })
-    df_gas = df_gas[["Year", "Contributor", "Share"]].dropna()
+    chart_country = "World"  # or use selected_country if making interactive
+    dev_year_range = (1961, 2004)  # adjust as needed
 
-    # Interactive selection
-    selection = alt.selection_point(fields=["Contributor"])
-    condition = alt.condition(selection, "Contributor:N", alt.ColorValue("lightgray"))
+    # Filter and prepare data
+    df2 = pd.read_csv("contributions-global-temp-change.csv")
+    df2 = df2[(df2["Year"] >= dev_year_range[0]) & (df2["Year"] <= dev_year_range[1])]
+    
+    gas_cols = [c for c in df2.columns if c.startswith("Change in")]
+    col_map = {
+        col: (
+            "N2O_FF&I" if "nitrous oxide" in col and "fossil fuels" in col else
+            "N2O_AgLU" if "nitrous oxide" in col else
+            "CH4_FF&I" if "methane" in col and "fossil fuels" in col else
+            "CH4_AgLU" if "methane" in col else
+            "CO2_FF&I" if "fossil fuels" in col else 
+            "CO2_AgLU"
+        )
+        for col in gas_cols
+    }
 
-    area_chart = (
-        alt.Chart(df_gas)
-        .mark_area(opacity=0.7)
-        .encode(
-            x=alt.X("Year:O", title="Year"),
-            y=alt.Y("Share:Q", title="Share of Global Warming"),
-            color=condition,
-            order="Contributor:N",
-            tooltip=["Year:O", "Contributor:N", alt.Tooltip("Share:Q", format=".2%")]
-        )
-        .add_params(selection)
-        .properties(
-            width=900,
-            height=500,
-            title="Warming Contributions by Entity (Share % over Time)"
-        )
+    gas_df = df2[df2["Entity"] == chart_country].copy()
+    gas_df.drop(columns=["Code"], inplace=True, errors="ignore")
+    gas_df.rename(columns=col_map, inplace=True)
+
+    gas_long = gas_df.melt(
+        id_vars="Year",
+        value_vars=list(col_map.values()),
+        var_name="series",
+        value_name="Temp Change"
+    )
+
+    # Interactive Selection
+    selection = alt.selection_point(fields=["series"])
+    condition = alt.condition(selection, "series:N", alt.ColorValue("lightgray"))
+
+    area_chart = alt.Chart(gas_long).mark_area(opacity=0.7).encode(
+        x=alt.X("Year:O", title="Year"),
+        y=alt.Y("Temp Change:Q", title="Temperature Change (°C)"),
+        color=condition,
+        order="series:N",
+        tooltip=["Year:O", "series:N", "Temp Change:Q"]
+    ).add_params(selection).properties(
+        title=f"Warming by Gas and Source ({chart_country})",
+        width=850,
+        height=450
     )
 
     st.altair_chart(area_chart, use_container_width=True)
