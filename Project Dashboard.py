@@ -119,24 +119,6 @@ def load_gas_data():
 
     return gas_long
 
-# ─── Sidebar Filters ────────────────────
-if page not in ["Home", "Chat Assistant"]:
-    st.sidebar.header("🔍 Filters")
-    
-    countries = ["All"] + sorted(df_long["Country"].unique())
-    years     = ["All"] + sorted(df_long["Year"].unique())
-
-    # ✅ Add unique keys to avoid conflict with Explore Trends tab
-    selected_country = st.sidebar.selectbox("Select Country:", countries, key="global_country")
-    selected_year    = st.sidebar.selectbox("Select Year:", years, key="global_year")
-
-    # Filter the dataframe
-    filtered = df_long.copy()
-    if selected_country != "All":
-        filtered = filtered[filtered["Country"] == selected_country]
-    if selected_year != "All":
-        filtered = filtered[filtered["Year"] == selected_year]
-
 # ─── Home Page ───────────────────────────── 
 if page == "Home":
     st.write("""
