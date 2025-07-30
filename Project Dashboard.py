@@ -3,14 +3,14 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
-# ─── Page Config ────────────────────────────────────────────
+# ─── Page Config ────────────────────────────────────
 st.set_page_config(
     page_title="Global Temperature Change",
     page_icon="🌍",
     layout="wide"
 )
 
-# ─── Hero Section ───────────────────────────────────────────
+# ─── Hero Section ─────────────────────────
 st.markdown(
     """
     <style>
@@ -30,7 +30,7 @@ st.markdown(
     </style>
     <div class="hero" role="region" aria-label="Header with Earth image and dashboard title">
         <h1>🌍 Global Temperature Change 🌡️</h1>
-        <p>An interactive exploration of monthly and yearly global temperature trends.</p>
+        <p>An interactive exploration of global temperature trends.</p>
     </div>
     """,
     unsafe_allow_html=True
@@ -40,7 +40,7 @@ st.write(
     """
     <div class='description'>
         Explore how <strong>temperature changes over decades</strong> using interactive visualizations. 
-        Hover over charts, filter by countries, or analyze seasonal patterns individually.
+        Hover over charts, filter by countries, or analyze warming gases individually.
     </div>
     """,
     unsafe_allow_html=True
@@ -48,16 +48,16 @@ st.write(
 
 st.markdown("---")
 
-# ─── Sidebar Navigation ─────────────────────────────────────
+# ─── Sidebar Navigation ───────────────────────
 st.sidebar.title("Navigation")
 st.sidebar.caption("🔑 Use keyboard ↑↓ or type to search options.")
 page = st.sidebar.radio(
     "Go to:",
-    ["Home", "Year-over-Year + Country Trends"],
+    ["Home", "Explore Trends", "Warming Gases", "Chat Assistant"],
     index=0
 )
 
-# ─── Data Load and Prep ─────────────────────────────────────
+# ─── Data Load and Prep ────────────────────
 @st.cache_data
 
 def load_data():
@@ -75,14 +75,25 @@ def load_data():
 
 df_long = load_data()
 
-# ─── Sidebar Filters ────────────────────────────────────────
-if page != "Home":
+# Load gas warming data
+@st.cache_data
+def load_gas_data():
+    df2 = pd.read_csv("global-warming-by-gas-and-source.csv")
+    df2 = df2.rename(columns={"Entity": "series", "Annual global temperature change from GHG": "Temp Change"})
+    df2 = df2[["Year", "series", "Temp Change"]].dropna()
+    df2 = df2[df2["Temp Change"] != 0]  # Filter out zero values if needed
+    return df2
+
+gas_long = load_gas_data()
+
+# ─── Sidebar Filters ───────────────
+if page not in ["Home", "Chat Assistant"]:
     st.sidebar.header("🔍 Filters")
     countries = ["All"] + sorted(df_long["Country"].unique())
-    years = ["All"] + sorted(df_long["Year"].unique())
+    years     = ["All"] + sorted(df_long["Year"].unique())
 
     selected_country = st.sidebar.selectbox("Country", countries)
-    selected_year = st.sidebar.selectbox("Year", years)
+    selected_year    = st.sidebar.selectbox("Year", years)
 
     filtered = df_long.copy()
     if selected_country != "All":
@@ -90,7 +101,7 @@ if page != "Home":
     if selected_year != "All":
         filtered = filtered[filtered["Year"] == selected_year]
 
-# ─── Home Page ──────────────────────────────────────────────
+# ─── Home Page ───────────────────────────── 
 if page == "Home":
     st.write("""
     ### About This Dashboard
@@ -101,83 +112,216 @@ if page == "Home":
 
     Explore the visualizations to understand the impacts of these changes and potential mitigation strategies.
     """)
+# ─── Explore Trends Page Tabs ─────────────────────────────
+if page == "Explore Trends":
+    tab1, tab2, tab3, tab4 = st.tabs(["📈 Year-over-Year", "🌡️ Scatter Plot", "🔻 Variability", "🌍 Economic Status"])
 
-# ─── Year-over-Year + Country Trends ───────────────────────
-elif page == "Year-over-Year + Country Trends":
-    st.subheader("📈 Year-over-Year Change in Temperature")
-    st.info("""
-    This line chart shows how much **temperature change fluctuates year-over-year** for a selected country.
-    - Helps detect acceleration or deceleration in warming.
-    """)
+    # Year-over-Year Trend
+    with tab1:
+        st.subheader("📈 Historical Year-over-Year Temperature Changes (1961–2004)")
+        if selected_country == "All":
+            st.warning("Please select a specific country to view Year-over-Year changes.")
+        else:
+            yoy_data = df_long[df_long["Country"] == selected_country].copy()
+            yoy_data["YoY_Change"] = yoy_data["TempChange"].diff()
 
-    if selected_country == "All":
-        st.warning("Please select a specific country to view Year-over-Year changes.")
-    else:
-        yoy_data = df_long[df_long["Country"] == selected_country].copy()
-        yoy_data["YoY_Change"] = yoy_data["TempChange"].diff()
+            line = alt.Chart(yoy_data).mark_line(point=True).encode(
+                x=alt.X("Year:O"),
+                y=alt.Y("YoY_Change:Q", title="Change from Previous Year (°C)"),
+                color=alt.value("#f45b69"),
+                tooltip=["Year", "YoY_Change"]
+            ).properties(
+                width=800,
+                height=450,
+                title=f"Year-over-Year Temperature Change – {selected_country}"
+            )
 
-        line = alt.Chart(yoy_data).mark_line(point=True).encode(
-            x=alt.X("Year:O"),
-            y=alt.Y("YoY_Change:Q", title="Change from Previous Year (°C)"),
-            color=alt.value("#f45b69"),
-            tooltip=[
-                alt.Tooltip("Year:O", title="Year"),
-                alt.Tooltip("YoY_Change:Q", title="Year-over-Year Change (°C)", format=".3f")
-            ]
-        ).properties(
-            width=800,
-            height=450,
-            title=f"Year-over-Year Temperature Change – {selected_country}"
-        )
+            st.altair_chart(line, use_container_width=True)
 
-        st.altair_chart(line, use_container_width=True)
-
-        st.markdown("### 🌡️ Temperature Changes by Year (Scatter Plot)")
-        st.info("""
-        This scatter plot shows temperature deviations from baseline values for selected countries over time.
-        - **Purple = cooler**, **yellow = warmer** (colorblind-friendly).
-        - Click a country to highlight trends; hover to view details.
-        """)
-
+    # Scatter Plot
+    with tab2:
+        st.subheader("🌡️ Country Temperature Trends")
         alt.data_transformers.disable_max_rows()
         sel_country = alt.selection_point(fields=["Country"], empty="all")
 
-        scatter = (
-            alt.Chart(yoy_data)
-            .mark_circle(size=60)
-            .encode(
-                x=alt.X("Year:O", title="Year"),
-                y=alt.Y("TempChange:Q", title="Temperature Change (°C)"),
-                color=alt.Color(
-                    "TempChange:Q",
-                    scale=alt.Scale(scheme="plasma", domainMid=0),
-                    legend=alt.Legend(title="Temp Change (°C)")
-                ),
-                opacity=alt.condition(sel_country, alt.value(1), alt.value(0.15)),
-                tooltip=[
-                    alt.Tooltip("Country:N", title="Country"),
-                    alt.Tooltip("Year:O", title="Year"),
-                    alt.Tooltip("TempChange:Q", title="Temperature Change (°C)")
-                ]
-            )
-            .add_params(sel_country)
-            .properties(
-                height=500,
-                width=800,
-                title=f"Temperature Change Over Time – {selected_country}"
-            )
-        )
+        if selected_country == "All":
+            sample_countries = df_long["Country"].unique()[:10]
+            scatter_data = df_long[df_long["Country"].isin(sample_countries)]
+        else:
+            scatter_data = filtered
 
+        scatter = alt.Chart(scatter_data).mark_circle(size=60).encode(
+            x=alt.X("Year:O", title="Year"),
+            y=alt.Y("TempChange:Q", title="Temperature Change (°C)"),
+            color=alt.Color("TempChange:Q", scale=alt.Scale(scheme="plasma", domainMid=0)),
+            opacity=alt.condition(sel_country, alt.value(1), alt.value(0.15)),
+            tooltip=["Country", "Year", "TempChange"]
+        ).add_params(sel_country).properties(
+            height=500,
+            width=800,
+            title=f"Temperature Change Over Time – {selected_country if selected_country != 'All' else 'Sample of Countries'}"
+        )
         st.altair_chart(scatter, use_container_width=True)
+
+    # Variability Analysis
+    with tab3:
+        st.subheader("🔻 Countries with Decreasing Temperature Variability")
+        st.info("""
+        This chart compares the **standard deviation of temperature change** before and after 1993.
+        A **negative delta** indicates more stable climate conditions. Lower variability can reflect reduced
+        extremes or smoothing of seasonal temperature fluctuations.
+        """)
+        early = df_long[df_long["Year"] <= 1992].groupby("Country")["TempChange"].std().reset_index(name="Std_Early")
+        late = df_long[df_long["Year"] >= 1993].groupby("Country")["TempChange"].std().reset_index(name="Std_Late")
+        std_comp = early.merge(late, on="Country")
+        std_comp["Delta_Std"] = std_comp["Std_Late"] - std_comp["Std_Early"]
+        decreasing = std_comp[std_comp["Delta_Std"] < 0].sort_values("Delta_Std")
+
+        bar = alt.Chart(decreasing).mark_bar().encode(
+            x=alt.X("Delta_Std:Q", title="Δ Std Dev (1993–2024 − 1961–1992)"),
+            y=alt.Y("Country:N", sort="-x"),
+            color=alt.Color("Delta_Std:Q", scale=alt.Scale(scheme="viridis", domainMid=0)),
+            tooltip=["Country", "Std_Early", "Std_Late", "Delta_Std"]
+        ).properties(
+            height=500,
+            width=750,
+            title="Top Countries with Decreasing Yearly Temperature Variability"
+        )
+        st.altair_chart(bar, use_container_width=True)
+
+    # Developed vs Developing
+    with tab4:
+        st.subheader("🌍 Developed vs Developing: Temperature Comparison")
+        filtered_dev = df_long.copy()
+        dev_status = pd.read_csv("country_dev_status.csv")  # Must have columns Country, DevStatus
+        filtered_dev = filtered_dev.merge(dev_status, on="Country", how="left")
+        dev_year_range = [filtered_dev["Year"].min(), filtered_dev["Year"].max()]
+        dev_sel = alt.selection_multi(fields=["DevStatus"], bind="legend")
+
+        dev_avg = filtered_dev.groupby(["Year", "DevStatus"])["TempChange"].mean().reset_index()
+        line_chart = alt.Chart(dev_avg).mark_line(point=True).encode(
+            x=alt.X("Year:O"),
+            y=alt.Y("TempChange:Q", title="Avg Temp Change (°C)"),
+            color=alt.Color("DevStatus:N", scale=alt.Scale(domain=["Developed", "Developing"], range=["#2ca02c", "#ff7f0e"])),
+            opacity=alt.condition(dev_sel, alt.value(1.0), alt.value(0.15)),
+            tooltip=["Year", "DevStatus", "TempChange"]
+        ).add_params(dev_sel).properties(
+            title="Average Temp Change by Economic Status",
+            width=750,
+            height=400
+        )
+        st.altair_chart(line_chart, use_container_width=True)
+
+        filtered_dev["YearGroup"] = (filtered_dev["Year"] // 5) * 5
+        dev_bar = filtered_dev.groupby(["YearGroup", "DevStatus"])["TempChange"].mean().reset_index()
+        bar_chart = alt.Chart(dev_bar).mark_bar().encode(
+            x=alt.X("YearGroup:O", title="5-Year Group"),
+            y=alt.Y("TempChange:Q", title="Avg Temp Change (°C)"),
+            color=alt.Color("DevStatus:N", scale=alt.Scale(domain=["Developed", "Developing"], range=["#2ca02c", "#ff7f0e"])),
+            opacity=alt.condition(dev_sel, alt.value(1.0), alt.value(0.25)),
+            tooltip=["YearGroup", "DevStatus", "TempChange"]
+        ).add_params(dev_sel).properties(
+            title="5-Year Average Temperature Change by Development Status",
+            width=750,
+            height=400
+        )
+        st.altair_chart(bar_chart, use_container_width=True)
+
+        st.write("""
+        Developed countries, often referred to as "high-income" nations, typically have advanced technological infrastructure,
+        high standards of living, and robust economies. Examples include the United States, Germany, and Japan.
+
+        In contrast, developing countries, or "low to middle-income" nations, often face challenges like lower economic growth,
+        limited access to education and healthcare, and higher poverty rates. Examples include India, Nigeria, and Bangladesh.
+
+        The distinction isn't always clear-cut, as some nations exhibit characteristics of both.
+        """)
+
+# ─── Warming Gases Page ───────
+if page == "Warming Gases":
+    st.subheader("🔥 Warming Contributions by Gas and Source")
+    st.info("""
+    This area chart shows **the warming impact of major greenhouse gases and emission sources over time**.
+    Click the legend to highlight or filter different contributors.
+    """)
+
+    selection = alt.selection_point(fields=['series'])
+    condition = alt.condition(selection, 'series:N', alt.ColorValue('lightgray'))
+
+    area = alt.Chart(gas_long).mark_area(opacity=0.7).encode(
+        x=alt.X("Year:O", title="Year"),
+        y=alt.Y("Temp Change:Q", title="Temperature Change (°C)"),
+        color=condition,
+        order="series:N",
+        tooltip=['Year:O', 'series:N', 'Temp Change:Q']
+    ).add_params(selection).properties(
+        width=900,
+        height=500,
+        title="Warming Contributions by Gas Type and Emission Source"
+    )
+
+    st.altair_chart(area, use_container_width=True)
+
+# ─── Chat Assistant Page ────────────────────────────────
+if page == "Chat Assistant":
+    st.subheader("🧠 ClimateBot Assistant")
+    st.markdown("""
+    Ask **ClimateBot** anything about:
+    - 📈 Temperature trends over time
+    - 🌡️ Country-level comparisons
+    - 🔻 Variability and climate stability
+
+    For example:
+    - “Which country had the highest temp change in 1998?”
+    - “What does decreased variability mean?”
+    - “Compare developing vs developed warming patterns”
+    """)
+
+    # Set up chat interface
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = [
+            {"role": "assistant", "content": "Hi, I'm ClimateBot! Ask me anything about global temperatures 🌍"}
+        ]
+
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    prompt = st.chat_input("Ask your question here...")
+    if prompt:
+        st.chat_message("user").markdown(prompt)
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
+
+        # Example hard-coded Q&A for demonstration
+        response = ""
+        q = prompt.lower()
+
+        if "highest temp" in q and "country" in q:
+            response = "The country with the highest recorded temperature change in 1998 was likely a high-latitude nation like Russia or Canada, but exact values depend on the dataset."
+        elif "variability" in q:
+            response = (
+                "Variability refers to how much temperatures fluctuate year to year. "
+                "Less variability means more climate stability, which can affect ecosystems and planning."
+            )
+        elif "developed" in q and "developing" in q:
+            response = (
+                "Developed countries often show earlier increases due to industrialization. "
+                "Developing countries are now experiencing steeper rises due to economic growth and emissions."
+            )
+        else:
+            response = "Great question! Try asking about a specific year, country, or trend type. I'm still learning! 🤖"
+
+        st.chat_message("assistant").markdown(response)
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
 
 # ─── Footer ────────────────────────────────────────────────
 st.markdown("---")
 st.write(
     """
-    <div style="text-align: center;" role="contentinfo" aria-label="Footer">
-        Brought to you by <strong>Harrison, Paula and Roydan</strong>. 
-        Advocates for official climate change.
+    <div style="text-align: center; font-size: 15px;" role="contentinfo" aria-label="Footer information">
+        🌐 Created by <strong>Harrison, Paula, and Roydan</strong> • Advocates for Climate Transparency and Data Science  
+        <br/>
+        Built with ❤️ using <a href="https://streamlit.io" target="_blank">Streamlit</a> and <a href="https://altair-viz.github.io" target="_blank">Altair</a>
     </div>
     """,
     unsafe_allow_html=True
-)
