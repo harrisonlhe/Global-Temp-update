@@ -34,9 +34,7 @@ def load_csv(file):
     return pd.read_csv(file)
 
 df = load_csv("Indicator_3_1_Climate_Indicators_Annual_Mean_Global_Surface_Temperature_577579683071085080.csv")
-df2 = load_csv("global-warming-by-gas-and-source.csv")
 df_monthly = load_csv("df_monthly_long.csv")
-df_contribution = load_csv("contributions-global-temp-change.csv")
 
 # ─── Reshape and Prepare Data ───────────────────────────────
 year_cols = [c for c in df.columns if c.isdigit()]
