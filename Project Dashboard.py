@@ -319,9 +319,10 @@ st.markdown("---")
 st.write(
     """
     <div style="text-align: center; font-size: 15px;" role="contentinfo" aria-label="Footer information">
-        🌐 Created by <strong>Harrison, Paula, and Roydan</strong> • Advocates for Climate Transparency and Data Science  
+        🌐 Created by <strong>Harrison, Paula, and Roydan</strong> • Advocates for climate transparency and data science  
         <br/>
         Built with ❤️ using <a href="https://streamlit.io" target="_blank">Streamlit</a> and <a href="https://altair-viz.github.io" target="_blank">Altair</a>
     </div>
     """,
     unsafe_allow_html=True
+)
