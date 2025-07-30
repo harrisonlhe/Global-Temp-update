@@ -21,13 +21,6 @@ st.image(
 )
 st.markdown("</div>", unsafe_allow_html=True)
 
-# Display the global temperature animation
-st.image(
-    "https://upload.wikimedia.org/wikipedia/commons/3/33/Global_temperature_anomalies_-_1880-present.gif",
-    caption="Global Temperature Anomalies Since 1880 (Credit: NASA)",
-    use_container_width=True
-)
-
 st.write("""
 ### About This Dashboard
 Over the past century, the Earth's surface temperature has experienced significant changes due to various natural and anthropogenic factors. This dashboard explores key global temperature trends, anomalies, and projections to provide insights into the ongoing climate challenges.
