@@ -1,3 +1,10 @@
+# ───────────────────────────────────────────────────────────
+#  🌍  GLOBAL TEMPERATURE STORY DASHBOARD  (Streamlit + Altair)
+# ───────────────────────────────────────────────────────────
+import streamlit as st
+import pandas as pd
+import altair as alt
+
 # ─── Page set‑up ────────────────────────────────────────────
 st.set_page_config(page_title="Global Temperature Dashboard",
                    page_icon="🌍",
@@ -7,7 +14,7 @@ st.title("🌍 Global Temperature Story  🌡️")
 
 # Display the local image from GitHub
 st.image(
-    "https://raw.githubusercontent.com/PReece11/Global-Temp/main/pexels-arthousestudio-4310289.jpg",  # Raw URL of the image
+    "https://raw.githubusercontent.com/PReece11/Global-Temp/main/pexels-arthousestudio-4310289.jpg",
     caption="Image from Pexels (Credit: Arthousestudio)",
     use_container_width=True
 )
