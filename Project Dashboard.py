@@ -57,7 +57,7 @@ page = st.sidebar.radio(
     index=0
 )
 
-# ─── Data Load and Prep ────────────────────
+# ─── Data Load and Prep ─────────────────
 @st.cache_data
 def load_data():
     df = pd.read_csv("Indicator_3_1_Climate_Indicators_Annual_Mean_Global_Surface_Temperature_577579683071085080.csv")
@@ -70,6 +70,11 @@ def load_data():
     )
     df_long["Year"] = df_long["Year"].astype(int)
     df_long.sort_values(["Country", "Year"], inplace=True)
+
+    # Add DevStatus 
+    developed_iso3 = ["USA", "CAN", "GBR", "DEU", "FRA", "JPN", "AUS", "NZL", "NOR", "SWE", "CHE"]
+    df_long["DevStatus"] = df_long["ISO3"].apply(lambda x: "Developed" if x in developed_iso3 else "Developing")
+
     return df_long
 
 df_long = load_data()
