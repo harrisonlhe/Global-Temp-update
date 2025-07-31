@@ -56,13 +56,14 @@ Use this menu to switch between sections of the dashboard:
 - **Home**: Overview of global temperature trends
 - **Explore Trends**: Yearly patterns, variability, and status comparisons
 - **Warming Gases**: Contributions by greenhouse gases and sources
-- **Chat Assistant**: Ask questions like \"Which country warmed fastest in 1998?\"
+- **Placeholder**: This is a placeholder page.
+- **Chat Assistant**: Ask questions like "Which country warmed fastest in 1998?"
 
 🌓 **Note**: This dashboard is best viewed in **dark mode** for optimal readability and contrast.
 """)
 page = st.sidebar.radio(
     "Go to:",
-    ["Home", "Explore Trends", "Warming Gases", "Chat Assistant"],
+    ["Home", "Explore Trends", "Warming Gases", "Placeholder", "Chat Assistant"],  
     index=0
 )
 
@@ -88,51 +89,90 @@ def load_data():
 
 df_long = load_data()
 
+# ─── Warming Gases Page ───────
 @st.cache_data
-def load_gas_data():
-    df2 = pd.read_csv("contributions-global-temp-change.csv")
-    df2 = df2[(df2["Year"] >= 1961) & (df2["Year"] <= 2004)]
+def prepare_gas_data(df2, dev_year_range, chart_country):
+    # Filter the DataFrame based on the selected year range
+    df2_filtered = df2[
+        (df2["Year"] >= dev_year_range[0]) &
+        (df2["Year"] <= dev_year_range[1])
+    ].copy()
 
-    gas_cols = [c for c in df2.columns if c.startswith("Change in")]
-    col_map = {
-        col: (
-            "N2O_FF&I" if "nitrous oxide" in col and "fossil fuels" in col else
-            "N2O_AgLU" if "nitrous oxide" in col else
-            "CH4_FF&I" if "methane" in col and "fossil fuels" in col else
-            "CH4_AgLU" if "methane" in col else
-            "CO2_FF&I" if "fossil fuels" in col else 
-            "CO2_AgLU"
-        )
-        for col in gas_cols
+    # Function to get gas data for a specific entity
+    def gas_data(entity):
+        name = "World" if entity == "All" else entity
+        return df2_filtered[df2_filtered["Entity"] == name].drop(columns=["Code"]).copy()
+
+    # Define a mapping for gases and their sources
+    gas_mapping = {
+        "nitrous oxide": {
+            "fossil fuels": "N2O_FF&I",
+            "default": "N2O_AgLU"
+        },
+        "methane": {
+            "fossil fuels": "CH4_FF&I",
+            "default": "CH4_AgLU"
+        },
+        "fossil fuels": "CO2_FF&I",
+        "default": "CO2_AgLU"
     }
 
-    df2 = df2[df2["Entity"] == "World"].copy()
-    df2.drop(columns=["Code"], inplace=True, errors="ignore")
-    df2.rename(columns=col_map, inplace=True)
+    # Shorten column names using the mapping
+    gas_cols = [c for c in df2_filtered.columns if c.startswith("Change in")]
+    shortened_columns = {}
 
-    gas_long = df2.melt(
+    for col in gas_cols:
+        for gas, sources in gas_mapping.items():
+            if gas in col:
+                if isinstance(sources, dict):
+                    for source, new_name in sources.items():
+                        if source in col:
+                            shortened_columns[col] = new_name
+                            break
+                else:
+                    shortened_columns[col] = sources
+                break
+        else:
+            shortened_columns[col] = "CO2_AgLU"  # Default case
+
+    # Get the gas data and rename columns
+    gas_df = gas_data(chart_country).rename(columns=shortened_columns)
+
+    # Melt the DataFrame for visualization
+    gas_long = gas_df.melt(
         id_vars="Year",
-        value_vars=list(col_map.values()),
+        value_vars=list(shortened_columns.values()),
         var_name="series",
         value_name="Temp Change"
-    ).dropna()
+    )
 
-    return gas_long
+    # Add a legend mapping for better readability
+    label_map = {
+        "CO2_FF&I": "CO₂ (Fossil Fuels & Industry)",
+        "CO2_AgLU": "CO₂ (Agriculture & Land Use)",
+        "CH4_FF&I": "CH₄ (Fossil Fuels & Industry)",
+        "CH4_AgLU": "CH₄ (Agriculture & Land Use)",
+        "N2O_FF&I": "N₂O (Fossil Fuels & Industry)",
+        "N2O_AgLU": "N₂O (Agriculture & Land Use)"
+    }
+    gas_long["Legend"] = gas_long["series"].map(label_map)
 
+    return gas_long 
+    
 # ─── Sidebar Filters ───────────────
 if page not in ["Home", "Chat Assistant"]:
     st.sidebar.header("🔍 Filters")
     countries = ["All"] + sorted(df_long["Country"].unique())
-    years     = ["All"] + sorted(df_long["Year"].unique())
+    years = sorted(df_long["Year"].unique())  # Keep years available if needed
 
     selected_country = st.sidebar.selectbox("Country", countries)
-    selected_year    = st.sidebar.selectbox("Year", years)
+    selected_year = st.sidebar.selectbox("Year", years)  # Optional: keep if you want to filter by year
 
+    # Filter the DataFrame based on selected country and year
     filtered = df_long.copy()
+    
     if selected_country != "All":
         filtered = filtered[filtered["Country"] == selected_country]
-    if selected_year != "All":
-        filtered = filtered[filtered["Year"] == selected_year]
 
 # ─── Home Page ───────────────────────────── 
 if page == "Home":
@@ -148,17 +188,47 @@ if page == "Home":
     
 # ─── Explore Trends Page Tabs ─────────────────────────────
 if page == "Explore Trends":
-    tab1, tab2, tab3, tab4 = st.tabs(["📈 Year-over-Year", "🌡️ Scatter Plot", "🔻 Variability", "🌍 Economic Status"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📈 Year-over-Year", "🌡️ Scatter Plot", "🔻 Variability", "🌍 Country Status"])
 
-# Year-over-Year Trend
+    # Combined Line and Scatter Plot
     with tab1:
         st.subheader("📈 Historical Year-over-Year Temperature Changes (1961–2004)")
+        
+        # Interaction Description
+        st.write("""
+        **Explore the interactive visualization below!** 
+
+        - **Hover** over the data points in both the line and scatter plots to see detailed information about the **Year**, **Temperature Change (°C)**, and **Country**.
+        - **Select** specific countries in the scatter plot to highlight their temperature trends. The line chart will update to show the year-over-year changes for the selected country.
+        - **Analyze** the relationship between year-over-year changes (line) and overall temperature trends (scatter points) to identify patterns and anomalies.
+        - Use **zoom and pan** features to focus on specific time periods for a more detailed examination.
+        - To return to viewing all countries, simply **deselect** any highlighted points in the scatter plot.
+
+        Enjoy exploring the temperature trends!
+        """)
+
         if selected_country == "All":
-            st.warning("Please select a specific country to view Year-over-Year changes.")
+            st.write("Viewing data for a sample of countries. You can select a specific country to see detailed Year-over-Year changes.")
+            sample_countries = df_long["Country"].unique()[:10]  # Limit to a sample of 10 countries
+            yoy_data = df_long[df_long["Country"].isin(sample_countries)].copy()
+            yoy_data["YoY_Change"] = yoy_data["TempChange"].diff()
+
+            # Create the unified line chart for the sample countries
+            line = alt.Chart(yoy_data).mark_line(point=True).encode(
+                x=alt.X("Year:O"),
+                y=alt.Y("YoY_Change:Q", title="Change from Previous Year (°C)"),
+                color="Country:N",  # Differentiate lines by country
+                tooltip=["Year", "Country", "YoY_Change"]
+            ).properties(
+                width=800,
+                height=450,
+                title="Year-over-Year Temperature Change – Sample of Countries"
+            )
         else:
             yoy_data = df_long[df_long["Country"] == selected_country].copy()
             yoy_data["YoY_Change"] = yoy_data["TempChange"].diff()
 
+            # Create the line chart for the selected country
             line = alt.Chart(yoy_data).mark_line(point=True).encode(
                 x=alt.X("Year:O"),
                 y=alt.Y("YoY_Change:Q", title="Change from Previous Year (°C)"),
@@ -170,19 +240,14 @@ if page == "Explore Trends":
                 title=f"Year-over-Year Temperature Change – {selected_country}"
             )
 
-            st.altair_chart(line, use_container_width=True)
-
-    # Scatter Plot
-    with tab2:
-        st.subheader("🌡️ Country Temperature Trends")
+        # Create the scatter plot
         alt.data_transformers.disable_max_rows()
         sel_country = alt.selection_point(fields=["Country"], empty="all")
 
         if selected_country == "All":
-            sample_countries = df_long["Country"].unique()[:10]
             scatter_data = df_long[df_long["Country"].isin(sample_countries)]
         else:
-            scatter_data = filtered
+            scatter_data = df_long[df_long["Country"] == selected_country]
 
         scatter = alt.Chart(scatter_data).mark_circle(size=60).encode(
             x=alt.X("Year:O", title="Year"),
@@ -190,12 +255,7 @@ if page == "Explore Trends":
             color=alt.Color("TempChange:Q", scale=alt.Scale(scheme="plasma", domainMid=0)),
             opacity=alt.condition(sel_country, alt.value(1), alt.value(0.15)),
             tooltip=["Country", "Year", "TempChange"]
-        ).add_params(sel_country).properties(
-            height=500,
-            width=800,
-            title=f"Temperature Change Over Time – {selected_country if selected_country != 'All' else 'Sample of Countries'}"
-        )
-        st.altair_chart(scatter, use_container_width=True)
+        ).add
 
     # 🔻 Variability Analysis
     with tab3:
@@ -278,33 +338,53 @@ if page == "Explore Trends":
 if page == "Warming Gases":
     st.subheader("🔥 Warming Contributions by Gas and Source")
     st.info("""
-    This area chart shows the **warming impact of greenhouse gases** like CO₂, CH₄, and N₂O from 
-    sources like fossil fuels, agriculture, and land use. Click the legend to filter each source.
+    This area chart shows **the warming impact of major greenhouse gases and emission sources over time**.
+    Click the legend to highlight or filter different contributors.
     """)
 
     # Selection logic for interactivity
-    selection = alt.selection_point(fields=["series"])
-    condition = alt.condition(selection, "series:N", alt.ColorValue("lightgray"))
+    selection = alt.selection_point(fields=['series'])
+    condition = alt.condition(selection, 'series:N', alt.ColorValue('lightgray'))
 
-    area_chart = (
-        alt.Chart(gas_long)
-        .mark_area(opacity=0.7)
-        .encode(
-            x=alt.X("Year:O", title="Year"),
-            y=alt.Y("Temp Change:Q", title="Temperature Change (°C)"),
-            color=condition,
-            order="series:N",
-            tooltip=["Year:O", "series:N", "Temp Change:Q"]
-        )
-        .add_params(selection)
-        .properties(
-            title="Historical Warming Contributions by Gas and Source (1961–2004)",
-            width=850,
-            height=450
-        )
+    area = alt.Chart(gas_long).mark_area(opacity=0.7).encode(
+    x=alt.X("Year:O", title="Year"),
+    y=alt.Y("Temp Change:Q", title="Temperature Change (°C)"),
+    color=condition,
+    order="series:N",
+    tooltip=['Year:O', 'Legend:N', 'Temp Change:Q']
+).add_params(selection).properties(
+    width=900,
+    height=500,
+    title="Warming Contributions by Gas Type and Emission Source"
+)
+
+# Plotting bar by itself as it can be of 'None' value raising an exception
+
+# Check if the bar chart should be displayed based on the year range
+show_decreasing_var = (dev_year_range[0] == year_min) and (dev_year_range[1] == year_max)
+
+if bar is not None and show_decreasing_var:
+    st.altair_chart(alt.hconcat(bar_chart, bar).resolve_scale(color="independent"))
+    st.markdown(
+        "#### How do different gases and sources contribute to global warming?\n"
+        "Here, you can see how different gases and sources contribute to global warming. The leading gases that contribute to global warming are carbon dioxide (CO₂), methane (CH₄), and nitrous oxide (N₂O), and the leading sources are fossil fuels and industry (FF&I) and agriculture and land use (AgLU). You can highlight a section of the chart to see the contribution of a particular gas and source over time.\n"
     )
+    st.markdown('''
+    - The most prevalent contributor to global warming is **carbon dioxide** from **fossil fuels and industry**. 
+    - However, steps such as transitioning to renewable energy sources, electrification of transportation, and energy-efficient appliances can significantly reduce the impact of CO₂ emissions.
+    ''')
+    st.altair_chart(area, use_container_width=True)
+else:
+    st.markdown(
+        "#### How do different gases and sources contribute to global warming?\n"
+        "Here, you can see how different gases and sources contribute to global warming. The leading gases that contribute to global warming are carbon dioxide (CO₂), methane (CH₄), and nitrous oxide (N₂O), and the leading sources are fossil fuels and industry (FF&I) and agriculture and land use (AgLU). You can highlight a section of the chart to see the contribution of a particular gas and source over time.\n"
+    )
+    st.altair_chart(area, use_container_width=True)
 
-    st.altair_chart(area_chart, use_container_width=True)
+# ─── Roydan to add Content ───────────────────────────────────
+if page == "Placeholder":
+    st.title("Placeholder Page")
+    st.write("This is a placeholder page. You can add content here later.")
 
 # ─── Chat Assistant Page ────────────────────────────────
 if page == "Chat Assistant":
