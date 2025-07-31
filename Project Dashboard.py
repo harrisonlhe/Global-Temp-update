@@ -207,55 +207,75 @@ if page == "Explore Trends":
         Enjoy exploring the temperature trends!
         """)
 
-        if selected_country == "All":
-            st.write("Viewing data for a sample of countries. You can select a specific country to see detailed Year-over-Year changes.")
-            sample_countries = df_long["Country"].unique()[:10]  # Limit to a sample of 10 countries
-            yoy_data = df_long[df_long["Country"].isin(sample_countries)].copy()
-            yoy_data["YoY_Change"] = yoy_data["TempChange"].diff()
+    if selected_country == "All":
+        sample_countries = df_long["Country"].unique()[:10]
+        yoy_data = df_long[df_long["Country"].isin(sample_countries)].copy()
+        yoy_data["YoY_Change"] = yoy_data.groupby("Country")["TempChange"].diff()
 
-            # Create the unified line chart for the sample countries
-            line = alt.Chart(yoy_data).mark_line(point=True).encode(
-                x=alt.X("Year:O"),
-                y=alt.Y("YoY_Change:Q", title="Change from Previous Year (°C)"),
-                color="Country:N",  # Differentiate lines by country
-                tooltip=["Year", "Country", "YoY_Change"]
-            ).properties(
-                width=800,
-                height=450,
-                title="Year-over-Year Temperature Change – Sample of Countries"
-            )
-        else:
-            yoy_data = df_long[df_long["Country"] == selected_country].copy()
-            yoy_data["YoY_Change"] = yoy_data["TempChange"].diff()
+        line = alt.Chart(yoy_data).mark_line(point=True).encode(
+            x=alt.X("Year:O"),
+            y=alt.Y("YoY_Change:Q", title="Change from Previous Year (°C)"),
+            color="Country:N",
+            tooltip=["Year", "Country", "YoY_Change"]
+        ).properties(title="Year-over-Year Change – Sample Countries", height=350, width=800)
 
-            # Create the line chart for the selected country
-            line = alt.Chart(yoy_data).mark_line(point=True).encode(
-                x=alt.X("Year:O"),
-                y=alt.Y("YoY_Change:Q", title="Change from Previous Year (°C)"),
-                color=alt.value("#f45b69"),
-                tooltip=["Year", "YoY_Change"]
-            ).properties(
-                width=800,
-                height=450,
-                title=f"Year-over-Year Temperature Change – {selected_country}"
-            )
+        scatter_data = df_long[df_long["Country"].isin(sample_countries)]
+    else:
+        yoy_data = df_long[df_long["Country"] == selected_country].copy()
+        yoy_data["YoY_Change"] = yoy_data["TempChange"].diff()
 
-        # Create the scatter plot
-        alt.data_transformers.disable_max_rows()
-        sel_country = alt.selection_point(fields=["Country"], empty="all")
+        line = alt.Chart(yoy_data).mark_line(point=True).encode(
+            x=alt.X("Year:O"),
+            y=alt.Y("YoY_Change:Q", title="Change from Previous Year (°C)"),
+            color=alt.value("#f45b69"),
+            tooltip=["Year", "YoY_Change"]
+        ).properties(title=f"Year-over-Year Change – {selected_country}", height=350, width=800)
 
-        if selected_country == "All":
-            scatter_data = df_long[df_long["Country"].isin(sample_countries)]
-        else:
-            scatter_data = df_long[df_long["Country"] == selected_country]
+        scatter_data = df_long[df_long["Country"] == selected_country]
 
-        scatter = alt.Chart(scatter_data).mark_circle(size=60).encode(
-            x=alt.X("Year:O", title="Year"),
-            y=alt.Y("TempChange:Q", title="Temperature Change (°C)"),
-            color=alt.Color("TempChange:Q", scale=alt.Scale(scheme="plasma", domainMid=0)),
-            opacity=alt.condition(sel_country, alt.value(1), alt.value(0.15)),
-            tooltip=["Country", "Year", "TempChange"]
-        ).add
+    sel_country = alt.selection_point(fields=["Country"], empty="all")
+
+    scatter = alt.Chart(scatter_data).mark_circle(size=60).encode(
+        x=alt.X("Year:O", title="Year"),
+        y=alt.Y("TempChange:Q", title="Temperature Change (°C)"),
+        color=alt.Color("TempChange:Q", scale=alt.Scale(scheme="plasma")),
+        opacity=alt.condition(sel_country, alt.value(1), alt.value(0.15)),
+        tooltip=["Country", "Year", "TempChange"]
+    ).add_params(sel_country).properties(title="Raw Temperature Change", height=350, width=800)
+
+    # 🔽 Stack line and scatter vertically
+    st.altair_chart(line & scatter, use_container_width=True)
+    
+with tab2:
+    st.subheader("🌡️ Temperature Change Scatter Plot by Country")
+
+    st.write("""
+    This scatter plot shows the **actual annual temperature change** for each country over time.
+    Use the interactive legend and selection tool to highlight a country and explore its data.
+    """)
+
+    # Reuse the same selection logic --- placeholder
+    sel_country_2 = alt.selection_point(fields=["Country"], empty="all")
+
+    if selected_country == "All":
+        scatter_data_2 = df_long[df_long["Country"].isin(df_long["Country"].unique()[:10])]  # Sample
+    else:
+        scatter_data_2 = df_long[df_long["Country"] == selected_country]
+
+    scatter_chart = alt.Chart(scatter_data_2).mark_circle(size=60).encode(
+        x=alt.X("Year:O", title="Year"),
+        y=alt.Y("TempChange:Q", title="Temperature Change (°C)"),
+        color=alt.Color("Country:N" if selected_country == "All" else "TempChange:Q", 
+                        scale=alt.Scale(scheme="plasma")),
+        opacity=alt.condition(sel_country_2, alt.value(1), alt.value(0.15)),
+        tooltip=["Country", "Year", "TempChange"]
+    ).add_params(sel_country_2).properties(
+        width=800,
+        height=450,
+        title="Annual Temperature Change by Country"
+    )
+
+    st.altair_chart(scatter_chart, use_container_width=True)
 
     # 🔻 Variability Analysis
     with tab3:
