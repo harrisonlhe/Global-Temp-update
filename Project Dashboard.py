@@ -190,24 +190,23 @@ if page == "Home":
 if page == "Explore Trends":
     tab1, tab2, tab3, tab4 = st.tabs(["📈 Year-over-Year", "🌡️ Scatter Plot", "🔻 Variability", "🌍 Country Status"])
 
-    # Combined Line and Scatter Plot
+    # ─── Tab 1: Year-over-Year Changes ─────────────────────
     with tab1:
         st.subheader("📈 Historical Year-over-Year Temperature Changes")
-    
-            # Interaction Description
-            st.write("""
-            **Explore the interactive visualization below!** 
-    
-            - **Hover** over the data points in both the line and scatter plots to see detailed information about the **Year**, **Temperature Change (°C)**, and **Country**.
-            - **Select** specific countries in the scatter plot to highlight their temperature trends. The line chart will update to show the year-over-year changes for the selected country.
-            - **Analyze** the relationship between year-over-year changes (line) and overall temperature trends (scatter points) to identify patterns and anomalies.
-            - Use **zoom and pan** features to focus on specific time periods for a more detailed examination.
-            - To return to viewing all countries, simply **deselect** any highlighted points in the scatter plot.
-    
-            Enjoy exploring the temperature trends!
-            """)
-    
-        # Sample Countries
+        
+        st.write("""
+        **Explore the interactive visualization below!** 
+
+        - **Hover** over the data points in both the line and scatter plots to see detailed information about the **Year**, **Temperature Change (°C)**, and **Country**.
+        - **Select** specific countries in the scatter plot to highlight their temperature trends. The line chart will update to show the year-over-year changes for the selected country.
+        - **Analyze** the relationship between year-over-year changes (line) and overall temperature trends (scatter points) to identify patterns and anomalies.
+        - Use **zoom and pan** features to focus on specific time periods for a more detailed examination.
+        - To return to viewing all countries, simply **deselect** any highlighted points in the scatter plot.
+
+        Enjoy exploring the temperature trends!
+        """)
+
+        # Sample Countries Helper
         def get_sample_countries(df, n=10, min_years=20):
             country_counts = (
                 df.dropna(subset=["TempChange"])
@@ -217,35 +216,34 @@ if page == "Explore Trends":
             )
             top_countries = country_counts[country_counts["count"] >= min_years].sort_values("count", ascending=False).head(n)
             return top_countries["Country"].tolist()
-    
+
         if selected_country == "All":
             sample_countries = get_sample_countries(df_long)
             yoy_data = df_long[df_long["Country"].isin(sample_countries)].copy()
             yoy_data["YoY_Change"] = yoy_data.groupby("Country")["TempChange"].diff()
-    
+            scatter_data = df_long[df_long["Country"].isin(sample_countries)]
+
             line = alt.Chart(yoy_data).mark_line(point=True).encode(
                 x=alt.X("Year:O"),
                 y=alt.Y("YoY_Change:Q", title="Change from Previous Year (°C)"),
                 color="Country:N",
                 tooltip=["Year", "Country", "YoY_Change"]
             ).properties(title="Year-over-Year Change – Sample Countries", height=350, width=800)
-    
-            scatter_data = df_long[df_long["Country"].isin(sample_countries)]
+
         else:
             yoy_data = df_long[df_long["Country"] == selected_country].copy()
             yoy_data["YoY_Change"] = yoy_data["TempChange"].diff()
-    
+            scatter_data = df_long[df_long["Country"] == selected_country]
+
             line = alt.Chart(yoy_data).mark_line(point=True).encode(
                 x=alt.X("Year:O"),
                 y=alt.Y("YoY_Change:Q", title="Change from Previous Year (°C)"),
                 color=alt.value("#f45b69"),
                 tooltip=["Year", "YoY_Change"]
             ).properties(title=f"Year-over-Year Change – {selected_country}", height=350, width=800)
-    
-            scatter_data = df_long[df_long["Country"] == selected_country]
-    
+
         sel_country = alt.selection_point(fields=["Country"], empty="all")
-    
+
         scatter = alt.Chart(scatter_data).mark_circle(size=60).encode(
             x=alt.X("Year:O", title="Year"),
             y=alt.Y("TempChange:Q", title="Temperature Change (°C)"),
@@ -253,27 +251,25 @@ if page == "Explore Trends":
             opacity=alt.condition(sel_country, alt.value(1), alt.value(0.15)),
             tooltip=["Country", "Year", "TempChange"]
         ).add_params(sel_country).properties(title="Raw Temperature Change", height=350, width=800)
-    
-        # Stacked chart
+
         st.altair_chart(line & scatter, use_container_width=True)
 
-     # Scatter Repeat
+    # ─── Tab 2: Temperature Scatter Plot ───────────────────
     with tab2:
         st.subheader("🌡️ Temperature Change Scatter Plot by Country")
-    
+
         st.write("""
         This scatter plot shows the **actual annual temperature change** for each country over time.
         Use the interactive legend and selection tool to highlight a country and explore its data.
         """)
-    
-        # Reuse the same selection logic --- placeholder
+
         sel_country_2 = alt.selection_point(fields=["Country"], empty="all")
-    
+
         if selected_country == "All":
-            scatter_data_2 = df_long[df_long["Country"].isin(df_long["Country"].unique()[:10])]  # Sample
+            scatter_data_2 = df_long[df_long["Country"].isin(df_long["Country"].unique()[:10])]
         else:
             scatter_data_2 = df_long[df_long["Country"] == selected_country]
-    
+
         scatter_chart = alt.Chart(scatter_data_2).mark_circle(size=60).encode(
             x=alt.X("Year:O", title="Year"),
             y=alt.Y("TempChange:Q", title="Temperature Change (°C)"),
@@ -286,18 +282,16 @@ if page == "Explore Trends":
             height=450,
             title="Annual Temperature Change by Country"
         )
-    
+
         st.altair_chart(scatter_chart, use_container_width=True)
 
-    # 🔻 Variability Analysis
+    # ─── Tab 3: Variability Analysis ───────────────────────
     with tab3:
         st.subheader("🔻 Countries with Decreasing Temperature Variability")
-        st.info(
-            """
-            This chart compares the **standard deviation of temperature change** before and after 1993.
-            A **negative delta** indicates more stable climate conditions.
-            """
-        )
+        st.info("""
+        This chart compares the **standard deviation of temperature change** before and after 1993.
+        A **negative delta** indicates more stable climate conditions.
+        """)
 
         early = df_long[df_long["Year"] <= 1992].groupby("Country")["TempChange"].std().reset_index(name="Std_Early")
         late = df_long[df_long["Year"] >= 1993].groupby("Country")["TempChange"].std().reset_index(name="Std_Late")
@@ -318,21 +312,19 @@ if page == "Explore Trends":
 
         st.altair_chart(bar, use_container_width=True)
 
-    # 🌍 Developed vs Developing Comparison
+    # ─── Tab 4: Developed vs Developing Comparison ─────────
     with tab4:
         st.subheader("🌍 Developed vs Developing: Temperature Comparison")
         
-        st.write(
-            """
-            Developed countries, often referred to as "high-income" nations, typically have advanced technological infrastructure,
-            high standards of living, and robust economies. Examples include the United States, Germany, and Japan.
+        st.write("""
+        Developed countries, often referred to as "high-income" nations, typically have advanced technological infrastructure,
+        high standards of living, and robust economies. Examples include the United States, Germany, and Japan.
 
-            Developing countries face challenges like limited access to education, healthcare, and infrastructure.
-            Examples include India, Nigeria, and Bangladesh.
-            """
-        )
+        Developing countries face challenges like limited access to education, healthcare, and infrastructure.
+        Examples include India, Nigeria, and Bangladesh.
+        """)
+
         dev_sel = alt.selection_multi(fields=["DevStatus"], bind="legend")
-
         dev_avg = df_long.groupby(["Year", "DevStatus"])["TempChange"].mean().reset_index()
 
         line_chart = alt.Chart(dev_avg).mark_line(point=True).encode(
