@@ -342,43 +342,45 @@ if page == "Warming Gases":
     Click the legend to highlight or filter different contributors.
     """)
 
-    # Selection logic for interactivity
+    # Set a default year range and country
+    dev_year_range = (1961, 2004)  # You can add a sidebar slider later if needed
+    chart_country = selected_country if 'selected_country' in locals() else "All"
+
+    # Load gas data
+    gas_long = prepare_gas_data(df_long, dev_year_range, chart_country)
+
+    # Interactive selection logic
     selection = alt.selection_point(fields=['series'])
     condition = alt.condition(selection, 'series:N', alt.ColorValue('lightgray'))
 
+    # Area chart showing contribution by gas
     area = alt.Chart(gas_long).mark_area(opacity=0.7).encode(
-    x=alt.X("Year:O", title="Year"),
-    y=alt.Y("Temp Change:Q", title="Temperature Change (°C)"),
-    color=condition,
-    order="series:N",
-    tooltip=['Year:O', 'Legend:N', 'Temp Change:Q']
-).add_params(selection).properties(
-    width=900,
-    height=500,
-    title="Warming Contributions by Gas Type and Emission Source"
-)
-
-# Plotting bar by itself as it can be of 'None' value raising an exception
-
-# Check if the bar chart should be displayed based on the year range
-#show_decreasing_var = (dev_year_range[0] == year_min) and (dev_year_range[1] == year_max) -- Harrison, this is giving an error
-
-if bar is not None and show_decreasing_var:
-    st.altair_chart(alt.hconcat(bar_chart, bar).resolve_scale(color="independent"))
-    st.markdown(
-        "#### How do different gases and sources contribute to global warming?\n"
-        "Here, you can see how different gases and sources contribute to global warming. The leading gases that contribute to global warming are carbon dioxide (CO₂), methane (CH₄), and nitrous oxide (N₂O), and the leading sources are fossil fuels and industry (FF&I) and agriculture and land use (AgLU). You can highlight a section of the chart to see the contribution of a particular gas and source over time.\n"
+        x=alt.X("Year:O", title="Year"),
+        y=alt.Y("Temp Change:Q", title="Temperature Change (°C)"),
+        color=condition,
+        order="series:N",
+        tooltip=['Year:O', 'Legend:N', 'Temp Change:Q']
+    ).add_params(selection).properties(
+        width=900,
+        height=500,
+        title="Warming Contributions by Gas Type and Emission Source"
     )
-    st.markdown('''
-    - The most prevalent contributor to global warming is **carbon dioxide** from **fossil fuels and industry**. 
-    - However, steps such as transitioning to renewable energy sources, electrification of transportation, and energy-efficient appliances can significantly reduce the impact of CO₂ emissions.
-    ''')
-    st.altair_chart(area, use_container_width=True)
-else:
-    st.markdown(
-        "#### How do different gases and sources contribute to global warming?\n"
-        "Here, you can see how different gases and sources contribute to global warming. The leading gases that contribute to global warming are carbon dioxide (CO₂), methane (CH₄), and nitrous oxide (N₂O), and the leading sources are fossil fuels and industry (FF&I) and agriculture and land use (AgLU). You can highlight a section of the chart to see the contribution of a particular gas and source over time.\n"
-    )
+
+    # Explanation and chart rendering
+    st.markdown("""
+    #### How do different gases and sources contribute to global warming?
+    This area chart visualizes how different greenhouse gases contribute to global warming over time.
+    
+    - The leading gases are carbon dioxide (CO₂), methane (CH₄), and nitrous oxide (N₂O).
+    - The main sources are fossil fuels and industry (FF&I), and agriculture and land use (AgLU).
+    - You can interact with the chart legend to isolate specific gases or sources.
+    """)
+
+    st.markdown("""
+    - The most prevalent contributor to global warming is **carbon dioxide** from **fossil fuels and industry**.  
+    - Solutions include transitioning to renewable energy, electrification of transportation, and adopting energy-efficient technologies.
+    """)
+
     st.altair_chart(area, use_container_width=True)
 
 # ─── Roydan to add Content ───────────────────────────────────
