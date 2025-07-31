@@ -191,8 +191,8 @@ if page == "Explore Trends":
     tab1, tab2, tab3, tab4 = st.tabs(["📈 Year-over-Year", "🌡️ Scatter Plot", "🔻 Variability", "🌍 Country Status"])
 
     # Combined Line and Scatter Plot
-    with tab1:
-        st.subheader("📈 Historical Year-over-Year Temperature Changes (1961–2004)")
+with tab1:
+    st.subheader("📈 Historical Year-over-Year Temperature Changes")
         
         # Interaction Description
         st.write("""
@@ -206,6 +206,17 @@ if page == "Explore Trends":
 
         Enjoy exploring the temperature trends!
         """)
+
+        # Sampling logic for "All" view
+        def get_sample_countries(df, n=10, min_years=20):
+            country_counts = (
+                df.dropna(subset=["TempChange"])
+                .groupby("Country")["Year"]
+                .count()
+                .reset_index(name="count")
+            )
+            top_countries = country_counts[country_counts["count"] >= min_years].sort_values("count", ascending=False).head(n)
+            return top_countries["Country"].tolist()
 
     if selected_country == "All":
         sample_countries = df_long["Country"].unique()[:10]
