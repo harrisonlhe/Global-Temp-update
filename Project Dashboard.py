@@ -361,7 +361,7 @@ if page == "Warming Gases":
 # Plotting bar by itself as it can be of 'None' value raising an exception
 
 # Check if the bar chart should be displayed based on the year range
-show_decreasing_var = (dev_year_range[0] == year_min) and (dev_year_range[1] == year_max)
+#show_decreasing_var = (dev_year_range[0] == year_min) and (dev_year_range[1] == year_max) -- Harrison, this is giving an error
 
 if bar is not None and show_decreasing_var:
     st.altair_chart(alt.hconcat(bar_chart, bar).resolve_scale(color="independent"))
