@@ -39,8 +39,8 @@ st.markdown(
 st.write(
     """
     <div class='description'>
-        Explore how <strong>temperature changes over decades</strong> using interactive visualizations. 
-        Hover over charts, filter by countries, or analyze warming gases individually.
+        Explore how <strong> the Earth's temperature has changed over decades</strong> using interactive visualizations. 
+        Hover over charts, filter by countries, or analyze warming gases and emissions sources individually. 
     </div>
     """,
     unsafe_allow_html=True
@@ -88,79 +88,9 @@ def load_data():
     return df_long
 
 df_long = load_data()
-
-# ─── Warming Gases Page ───────
-@st.cache_data
-def prepare_gas_data(df2, dev_year_range, chart_country):
-    # Filter the DataFrame based on the selected year range
-    df2_filtered = df2[
-        (df2["Year"] >= dev_year_range[0]) &
-        (df2["Year"] <= dev_year_range[1])
-    ].copy()
-
-    # Function to get gas data for a specific entity
-    def gas_data(entity):
-        name = "World" if entity == "All" else entity
-        return df2_filtered[df2_filtered["Entity"] == name].drop(columns=["Code"]).copy()
-
-    # Define a mapping for gases and their sources
-    gas_mapping = {
-        "nitrous oxide": {
-            "fossil fuels": "N2O_FF&I",
-            "default": "N2O_AgLU"
-        },
-        "methane": {
-            "fossil fuels": "CH4_FF&I",
-            "default": "CH4_AgLU"
-        },
-        "fossil fuels": "CO2_FF&I",
-        "default": "CO2_AgLU"
-    }
-
-    # Shorten column names using the mapping
-    gas_cols = [c for c in df2_filtered.columns if c.startswith("Change in")]
-    shortened_columns = {}
-
-    for col in gas_cols:
-        for gas, sources in gas_mapping.items():
-            if gas in col:
-                if isinstance(sources, dict):
-                    for source, new_name in sources.items():
-                        if source in col:
-                            shortened_columns[col] = new_name
-                            break
-                else:
-                    shortened_columns[col] = sources
-                break
-        else:
-            shortened_columns[col] = "CO2_AgLU"  # Default case
-
-    # Get the gas data and rename columns
-    gas_df = gas_data(chart_country).rename(columns=shortened_columns)
-
-    # Melt the DataFrame for visualization
-    gas_long = gas_df.melt(
-        id_vars="Year",
-        value_vars=list(shortened_columns.values()),
-        var_name="series",
-        value_name="Temp Change"
-    )
-
-    # Add a legend mapping for better readability
-    label_map = {
-        "CO2_FF&I": "CO₂ (Fossil Fuels & Industry)",
-        "CO2_AgLU": "CO₂ (Agriculture & Land Use)",
-        "CH4_FF&I": "CH₄ (Fossil Fuels & Industry)",
-        "CH4_AgLU": "CH₄ (Agriculture & Land Use)",
-        "N2O_FF&I": "N₂O (Fossil Fuels & Industry)",
-        "N2O_AgLU": "N₂O (Agriculture & Land Use)"
-    }
-    gas_long["Legend"] = gas_long["series"].map(label_map)
-
-    return gas_long 
     
 # ─── Sidebar Filters ───────────────
-if page not in ["Home", "Chat Assistant"]:
+if page not in ["Home", "Chat Assistant", "Warming Gases"]:
     st.sidebar.header("🔍 Filters")
     countries = ["All"] + sorted(df_long["Country"].unique())
     years = sorted(df_long["Year"].unique())  # Keep years available if needed
@@ -181,7 +111,7 @@ if page == "Home":
     Over the past century, the Earth's surface temperature has experienced significant changes due to various natural and anthropogenic factors. This dashboard explores key global temperature trends, anomalies, and projections to provide insights into the ongoing climate challenges.
 
     **How Gases Affect Temperature**  
-    Greenhouse gases, like carbon dioxide (CO2), methane (CH4), and water vapor, trap heat in the Earth's atmosphere. This natural process, called the greenhouse effect, maintains the Earth's habitable temperature. However, excessive emissions from human activities, including burning fossil fuels and deforestation, amplify this effect, leading to global warming and climate changes.
+    Greenhouse gases, like carbon dioxide (CO₂), methane (CH₄), and water vapor, trap heat in the Earth's atmosphere. This natural process, called the greenhouse effect, maintains the Earth's habitable temperature. However, excessive emissions from human activities, including burning fossil fuels and deforestation, amplify this effect, leading to global warming and climate changes.
 
     Explore the visualizations to understand the impacts of these changes and potential mitigation strategies.
     """)
@@ -363,19 +293,70 @@ if page == "Warming Gases":
     st.subheader("🔥 Warming Contributions by Gas and Source")
     st.info("""
     This area chart shows **the warming impact of major greenhouse gases and emission sources over time**.
-    Click the legend to highlight or filter different contributors.
+    Click on a section of the chart to highlight or filter different contributors.
     """)
 
     # Set a default year range and country
     dev_year_range = (1961, 2004)  # You can add a sidebar slider later if needed
-    chart_country = selected_country if 'selected_country' in locals() else "All"
 
-    # Load gas data
-    gas_long = prepare_gas_data(df_long, dev_year_range, chart_country)
+    # Gas data
+    df2 = pd.read_csv("global-warming-by-gas-and-source.csv")
+    df2 = df2[
+        (df2["Year"] >= dev_year_range[0]) &
+        (df2["Year"] <= dev_year_range[1])
+    ].copy()
+
+    available_countries = df2["Entity"].unique()
+    chart_country = st.sidebar.selectbox(
+        "Select Country",
+        ["All"] + sorted(available_countries),
+        index=0
+    )
+    # chart_country = selected_country if 'selected_country' in locals() else "All"
+
+    def gas_data(entity):
+        name = "World" if entity == "All" else entity
+        g = df2[df2["Entity"] == name].copy()
+        return g
+    
+    gas_cols = [c for c in df2.columns if c.startswith("Change in")]
+
+    shortened_columns = {
+        col: (
+            "N2O_FF&I" if "nitrous oxide" in col and "fossil fuels" in col else
+            "N2O_AgLU" if "nitrous oxide" in col else
+            "CH4_FF&I" if "methane" in col and "fossil fuels" in col else
+            "CH4_AgLU" if "methane" in col else
+            "CO2_FF&I" if "fossil fuels" in col else 
+            "CO2_AgLU"
+        )
+        for col in gas_cols
+    }
+
+    gas_df = gas_data(chart_country)
+    gas_df.drop(columns=["Code"], inplace=True)
+    gas_df.rename(columns=shortened_columns, inplace=True)
+
+    gas_long = gas_df.melt(
+        id_vars="Year",
+        value_vars=list(shortened_columns.values()),
+        var_name="series",
+        value_name="Temp Change"
+    )
+
+    label_map = {
+        "CO2_FF&I": "CO₂ (Fossil Fuels & Industry)",
+        "CO2_AgLU": "CO₂ (Agriculture & Land Use)",
+        "CH4_FF&I": "CH₄ (Fossil Fuels & Industry)",
+        "CH4_AgLU": "CH₄ (Agriculture & Land Use)",
+        "N2O_FF&I": "N₂O (Fossil Fuels & Industry)",
+        "N2O_AgLU": "N₂O (Agriculture & Land Use)"
+    }
+    gas_long["Legend"] = gas_long["series"].map(label_map)
 
     # Interactive selection logic
-    selection = alt.selection_point(fields=['series'])
-    condition = alt.condition(selection, 'series:N', alt.ColorValue('lightgray'))
+    selection = alt.selection_point(fields=['Legend'])
+    condition = alt.condition(selection, 'Legend:N', alt.ColorValue('lightgray'))
 
     # Area chart showing contribution by gas
     area = alt.Chart(gas_long).mark_area(opacity=0.7).encode(
@@ -387,7 +368,7 @@ if page == "Warming Gases":
     ).add_params(selection).properties(
         width=900,
         height=500,
-        title="Warming Contributions by Gas Type and Emission Source"
+        title=f"Warming Contributions by Gas Type and Emission Source for {chart_country}" if chart_country != "All" else "Warming Contributions by Gas Type and Emission Source (Entire World)"
     )
 
     # Explanation and chart rendering
@@ -398,9 +379,6 @@ if page == "Warming Gases":
     - The leading gases are carbon dioxide (CO₂), methane (CH₄), and nitrous oxide (N₂O).
     - The main sources are fossil fuels and industry (FF&I), and agriculture and land use (AgLU).
     - You can interact with the chart legend to isolate specific gases or sources.
-    """)
-
-    st.markdown("""
     - The most prevalent contributor to global warming is **carbon dioxide** from **fossil fuels and industry**.  
     - Solutions include transitioning to renewable energy, electrification of transportation, and adopting energy-efficient technologies.
     """)
